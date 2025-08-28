@@ -23,7 +23,7 @@ libdir = open5gs_project.get_variable('libdir')
 python3_exe = open5gs_project.get_variable('python3_exe')
 mkdir_p = open5gs_project.get_variable('mkdir_p')
 install_conf = open5gs_project.get_variable('install_conf')
-sbi_openapi_inc = open5gs_project.get_variable('libsbi_openapi_model_inc')
+libsbi_openapi_inc = open5gs_project.get_variable('libsbi_openapi_inc')
 libinc = open5gs_project.get_variable('libinc')
 app_type = 'MBSF'
 
@@ -97,11 +97,10 @@ libmbsf_gen_sources = [configure_file(output : 'mbsf-version.h', configuration :
 libmbsf_sources = libmbsf_dist_sources + libmbsf_gen_sources + libmbsf_openapi_gen_sources
 
 libmbsf_libinc = include_directories('.')
-libmbsf_lib_openapiinc = include_directories('openapi/model')
 
 libmbsf = static_library('mbsf',
     sources : libmbsf_sources,
-    include_directories : [libmbsf_libinc, libmbsf_lib_openapiinc, sbi_openapi_inc, libinc],
+    include_directories : [libmbsf_libinc, libsbi_openapi_inc, libinc],
     dependencies : [libsbi_dep,
                     libsbi_openapi_dep,
                     libapp_dep,
