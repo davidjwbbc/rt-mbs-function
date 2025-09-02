@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_SBI_STREAM_HH_
-#define _MBS_TF_OPEN5GS_SBI_STREAM_HH_
+#ifndef _MBSF_OPEN5GS_SBI_STREAM_HH_
+#define _MBSF_OPEN5GS_SBI_STREAM_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Stream interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Stream interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -22,6 +23,7 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include <exception>
 #include <memory>
 
 #include "common.hh"
@@ -35,7 +37,11 @@ public:
     Open5GSSBIStream(ogs_sbi_stream_t *stream) :m_stream(stream) {};
     Open5GSSBIStream(ogs_pool_id_t stream_id)
         :m_stream(reinterpret_cast<ogs_sbi_stream_t*>(ogs_sbi_stream_find_by_id(stream_id)))
-        {};
+    {
+        if (!m_stream) {
+            throw std::runtime_error("ogs_sbi_stream_find_by_id() failed");
+        }
+    };
     Open5GSSBIStream() = delete;
     Open5GSSBIStream(Open5GSSBIStream &&other) = delete;
     Open5GSSBIStream(const Open5GSSBIStream &other) = delete;
@@ -58,4 +64,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_SBI_STREAM_HH_ */
+#endif /* _MBSF_OPEN5GS_SBI_STREAM_HH_ */

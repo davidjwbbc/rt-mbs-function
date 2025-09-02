@@ -31,7 +31,6 @@
 #include "common.hh"
 #include "App.hh"
 #include "Context.hh"
-#include "DistributionSession.hh"
 #include "hash.hh"
 #include "MBSFNetworkFunction.hh"
 #include "NfServer.hh"
@@ -47,6 +46,7 @@
 #include "openapi/model/MBSUserService.h"
 #include "openapi/model/CreateReqData.h"
 #include "openapi/model/TunnelAddress.h"
+#include "openapi/model/MbsServiceType.h"
 
 #include "openapi/api/IndividualMBSUserServiceDocumentApi-info.h"
 #include "TimerFunc.hh"
@@ -58,6 +58,7 @@ using fiveg_mag_reftools::CJson;
 using reftools::mbsf::MBSUserService;
 using reftools::mbsf::CreateReqData;
 using reftools::mbsf::TunnelAddress;
+using reftools::mbsf::MbsServiceType;
 
 MBSF_NAMESPACE_START
 
@@ -101,9 +102,6 @@ CJson UserService::json(bool as_request = false) const
 void UserService::update(CJson &json, bool as_request)
 {
     m_MBSUserService.reset(new MBSUserService(json, as_request));
-    m_generated = std::chrono::system_clock::now();
-    m_lastUsed = m_generated;
-
 }
 
 
@@ -112,9 +110,21 @@ const std::shared_ptr<UserService> &UserService::find(const std::string &id)
     const std::map<std::string, std::shared_ptr<UserService> > &UserServices = App::self().context()->UserServices;
     auto it = UserServices.find(id);
     if (it == UserServices.end()) {
-        throw std::out_of_range("MBS User Service not found");
+        throw std::out_of_range(std::format("MBS User Service [{}] not found", id));
     }
     return it->second;
+}
+
+const std::string &UserService::getMBSUserServiceType() const
+{
+    const std::shared_ptr< MbsServiceType > mbs_service_type = m_MBSUserService ? m_MBSUserService->getServType():nullptr;
+    if (!mbs_service_type)
+    {
+        static const std::string empty_string{};
+        return empty_string;
+    }
+    return mbs_service_type->getString();
+
 }
 
 bool UserService::processEvent(Open5GSEvent &event)
@@ -129,10 +139,12 @@ bool UserService::processEvent(Open5GSEvent &event)
             Open5GSSBIRequest request(event.sbiRequest());
             ogs_assert(request);
             Open5GSSBIMessage message;
-            Open5GSSBIStream stream(reinterpret_cast<ogs_sbi_stream_t*>(event.sbiData()));
-            ogs_assert(stream);
+
+            ogs_pool_id_t stream_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_stream_t*>(event.sbiData()));
+            Open5GSSBIStream stream(stream_id);
+
             Open5GSSBIServer server(stream.server());
-            ogs_assert(server);
+
             std::optional<NfServer::InterfaceMetadata> api(std::nullopt);
 
             try {
@@ -166,7 +178,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                     const char *ptr_resource1 = message.resourceComponent(1);
                     if (method == OGS_SBI_HTTP_METHOD_POST) {
                         ogs_debug("POST response: status = %i", message.resStatus());
-			std::shared_ptr<UserService> user_service;
+                        std::shared_ptr<UserService> user_service;
                         ogs_debug("Request body: %s", request.content());
                         //ogs_debug("Request " OGS_SBI_CONTENT_TYPE ": %s", request.headerValue(OGS_SBI_CONTENT_TYPE, std::string()).c_str());
                         if (request.headerValue(OGS_SBI_CONTENT_TYPE, std::string()) != "application/json") {
@@ -265,10 +277,10 @@ bool UserService::processEvent(Open5GSEvent &event)
                                                                     err.str(), std::nullopt, invalid_params));
                         }
                         return true;
-		    
-		    } else if (method == OGS_SBI_HTTP_METHOD_PUT) {
-			const char *ptr_resource2 = message.resourceComponent(2);
-			if (!ptr_resource1 && !ptr_resource2) {
+
+                    } else if (method == OGS_SBI_HTTP_METHOD_PUT) {
+                        const char *ptr_resource2 = message.resourceComponent(2);
+                        if (!ptr_resource1 && !ptr_resource2) {
                             std::ostringstream err;
                             err << "Invalid resource [" << message.uri() << "]";
                             ogs_error("%s", err.str().c_str());
@@ -276,7 +288,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                                                                     app_meta, api, "Bad Request", err.str()));
                             return true;
                         }
-			 if (request.headerValue(OGS_SBI_CONTENT_TYPE, std::string()) != "application/json") {
+                         if (request.headerValue(OGS_SBI_CONTENT_TYPE, std::string()) != "application/json") {
                             ogs_assert(true == NfServer::sendError(stream, OGS_SBI_HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE,
                                                                    3, message, app_meta, api, "Unsupported Media Type",
                                                                    "Expected content type: application/json"));
@@ -300,11 +312,11 @@ bool UserService::processEvent(Open5GSEvent &event)
                         }
 
                         std::string user_service_id(ptr_resource1);
-			try {
+                        try {
                             int response_code = 200;
 
                             std::shared_ptr<UserService> user_service = UserService::find(user_service_id);
-			    user_service->update(mbs_user_service, true);
+                            user_service->update(mbs_user_service, true);
                             CJson user_service_json(user_service->json(false));
                             std::string body(user_service_json.serialise());
                             ogs_debug("Parsed JSON: %s", body.c_str());
@@ -312,7 +324,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                             location << request.uri() << "/" << user_service->userServiceId();
                             std::shared_ptr<Open5GSSBIResponse> response(NfServer::newResponse(std::string(request.uri())/*location.str()*/,
                                                     body.empty()?nullptr:"application/json",
-                                                    std::chrono::time_point_cast<std::chrono::seconds>(user_service->generated()),
+                                                    user_service->generated(),
                                                     user_service->hash().c_str(),
                                                     App::self().context()->cacheControl.MBSUserServiceMaxAge,
                                                     std::nullopt/*nullptr*/, api, app_meta));
@@ -335,8 +347,8 @@ bool UserService::processEvent(Open5GSEvent &event)
                                                                     err.str(), std::nullopt, invalid_params));
                         }
 
-                        return true; 
-		 	
+                        return true;
+
                     } else if (method == OGS_SBI_HTTP_METHOD_DELETE) {
                         if (message.resourceComponent(1) && !message.resourceComponent(2)) {
                             std::string user_service_id(message.resourceComponent(1));
@@ -394,24 +406,6 @@ bool UserService::processEvent(Open5GSEvent &event)
     }
     return false;
 }
-
-void UserService::addDistributionSession(const std::shared_ptr<DistributionSession> &session)
-{
-    std::shared_ptr<DistributionSession> map_session(session);
-    m_distributionSessions.insert(std::make_pair<std::string, std::shared_ptr<DistributionSession> >(std::string(map_session->distributionSessionId()), std::move(map_session)));
-}
-
-
-void UserService::deleteDistributionSession(const std::string &distributionSessionid)
-{
-    auto it = m_distributionSessions.find(distributionSessionid);
-    if (it != m_distributionSessions.end()) {
-        m_distributionSessions.erase(it);
-    } else {
-        throw std::out_of_range("MBSF Distribution session not found");
-    }
-}
-
 
 MBSF_NAMESPACE_STOP
 

@@ -33,6 +33,8 @@ int main(int argc, char *argv[])
 endif
 
 open5gs_project=subproject('open5gs', required: true)
+svc_consumers_project=subproject('rt-5gc-service-consumers',required:true)
+
 
 #subdir('lib')
 subdir('src')

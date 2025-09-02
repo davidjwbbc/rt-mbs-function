@@ -25,6 +25,7 @@
 
 #include <chrono>
 #include <memory>
+#include "openapi/model/MBSUserService.h"
 #include "common.hh"
 
 namespace fiveg_mag_reftools {
@@ -41,7 +42,6 @@ using reftools::mbsf::MBSUserService;
 MBSF_NAMESPACE_START
 
 class Open5GSEvent;
-class DistributionSession;
 
 class UserService {
 public:
@@ -62,15 +62,11 @@ public:
     void update(CJson &json, bool as_request);
     const std::string &userServiceId() const { return m_UserServiceId; };
     const std::shared_ptr<MBSUserService> &getMBSUserService() const {return m_MBSUserService;};
+    const std::string &getMBSUserServiceType() const;
     const SysTimeMS &generated() const {return m_generated;};
     const std::string &hash() const {return m_hash;};
 
     static bool processEvent(Open5GSEvent &event);
-
-    void addDistributionSession(const std::shared_ptr<DistributionSession> &DistributionSession);
-    void deleteDistributionSession(const std::string &distributionSessionid);
-    const std::map<std::string, std::shared_ptr<DistributionSession> > &distributionSession() const {return m_distributionSessions;};
-    std::map<std::string, std::shared_ptr<DistributionSession> > &distributionSessions() {return m_distributionSessions;};
 
 private:
     std::shared_ptr<MBSUserService> m_MBSUserService;
@@ -78,7 +74,6 @@ private:
     SysTimeMS m_lastUsed;
     std::string m_hash;
     std::string m_UserServiceId;
-    std::map<std::string, std::shared_ptr<DistributionSession> > m_distributionSessions;
 };
 
 MBSF_NAMESPACE_STOP

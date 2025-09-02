@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_YAML_DOCUMENT_HH_
-#define _MBS_TF_OPEN5GS_YAML_DOCUMENT_HH_
+#ifndef _MBSF_OPEN5GS_YAML_DOCUMENT_HH_
+#define _MBSF_OPEN5GS_YAML_DOCUMENT_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS YAML document interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS YAML document interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -48,4 +49,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_YAML_DOCUMENT_HH_ */
+#endif /* _MBSF_OPEN5GS_YAML_DOCUMENT_HH_ */

@@ -25,6 +25,8 @@ mkdir_p = open5gs_project.get_variable('mkdir_p')
 install_conf = open5gs_project.get_variable('install_conf')
 libsbi_openapi_inc = open5gs_project.get_variable('libsbi_openapi_inc')
 libinc = open5gs_project.get_variable('libinc')
+
+libscmbsmf_dep = svc_consumers_project.get_variable('libscmbsmf_dep')
 app_type = 'MBSF'
 
 latest_apis = get_option('latest_apis')
@@ -51,14 +53,24 @@ libmbsf_dist_sources = files('''
     MBSFEventHandler.cc
     MBSFEventHandler.hh
     MBSFNetworkFunction.hh
+    MBSMFMBSSession.cc
+    MBSMFMBSSession.hh
+    MBSProblemCause.cc
+    MBSProblemCause.hh
     NfServer.cc
     NfServer.hh
+    Nmb2Build.cc
+    Nmb2Build.hh
+    Nmb2Handler.cc
+    Nmb2Handler.hh
     Open5GSEvent.hh
     Open5GSFSM.hh
     Open5GSNetworkFunction.cc
     Open5GSNetworkFunction.hh
     Open5GSSBIClient.cc
     Open5GSSBIClient.hh
+    Open5GSSBIObject.cc
+    Open5GSSBIObject.hh
     Open5GSSBIMessage.cc
     Open5GSSBIMessage.hh
     Open5GSSBIRequest.cc
@@ -74,6 +86,8 @@ libmbsf_dist_sources = files('''
     Open5GSYamlIter.cc
     Open5GSYamlIter.hh
     TimerFunc.hh
+    UserDataIngSession.cc
+    UserDataIngSession.hh
     UserService.cc
     UserService.hh
 '''.split())
@@ -105,6 +119,7 @@ libmbsf = static_library('mbsf',
                     libsbi_openapi_dep,
                     libapp_dep,
                     libcrypt_dep,
+                    libscmbsmf_dep,
                     uuid_dep],
     install : false)
 
@@ -114,6 +129,7 @@ libmbsf_dep = declare_dependency(
                     libsbi_openapi_dep,
                     libapp_dep,
                     libcrypt_dep,
+                    libscmbsmf_dep,
                     uuid_dep])
 libmbsf_whole_dep = declare_dependency(
     link_whole : libmbsf,
@@ -121,6 +137,7 @@ libmbsf_whole_dep = declare_dependency(
                     libsbi_openapi_dep,
                     libapp_dep,
                     libcrypt_dep,
+                    libscmbsmf_dep,
                     uuid_dep])
 
 mbsf_sources = files('''

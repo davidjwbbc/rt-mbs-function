@@ -1,8 +1,9 @@
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Server interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Server interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -49,7 +50,7 @@ Open5GSSBIServer::Open5GSSBIServer(ogs_sbi_server_t *server)
 
 Open5GSSBIServer::Open5GSSBIServer(ogs_socknode_t *node,  ogs_sockopt_t *option)
 {
-    m_ogsServer = ogs_sbi_server_add(NULL /*ifc*/, ogs_sbi_self()->tls.server.scheme, node->addr, option);
+    m_ogsServer = ogs_sbi_server_add(nullptr /*ifc*/, ogs_sbi_self()->tls.server.scheme, node->addr, option);
     ogs_assert(m_ogsServer);
 }
 

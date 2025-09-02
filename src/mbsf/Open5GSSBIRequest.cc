@@ -1,8 +1,9 @@
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Request interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Request interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author: David Waring <david.waring2@bbc.co.uk>
+ *         Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -26,6 +27,7 @@
 
 #include "common.hh"
 #include "CaseInsensitiveTraits.hh"
+#include "Open5GSSBIMessage.hh"
 
 #include "Open5GSSBIRequest.hh"
 
@@ -57,6 +59,14 @@ Open5GSSBIRequest::Open5GSSBIRequest(const std::string &method, const std::strin
 
 }
 
+Open5GSSBIRequest::Open5GSSBIRequest(Open5GSSBIMessage &message)
+    :m_request(ogs_sbi_build_request(message.ogsSBIMessage()))
+    ,m_owner(true)
+
+{
+
+}
+
 std::string Open5GSSBIRequest::headerValue(const std::string &field, const std::string &defval) const
 {
     typedef std::string::value_type C;
@@ -69,6 +79,13 @@ std::string Open5GSSBIRequest::headerValue(const std::string &field, const std::
     }
 
     return defval;
+}
+
+const char *Open5GSSBIRequest::resourceComponent(size_t idx) const
+{
+    if (!m_request) return nullptr;
+    if (idx >= OGS_SBI_MAX_NUM_OF_RESOURCE_COMPONENT) return nullptr;
+    return m_request->h.resource.component[idx];
 }
 
 MBSF_NAMESPACE_STOP

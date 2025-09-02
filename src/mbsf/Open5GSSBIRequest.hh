@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_SBI_REQUEST_HH_
-#define _MBS_TF_OPEN5GS_SBI_REQUEST_HH_
+#ifndef _MBSF_OPEN5GS_SBI_REQUEST_HH_
+#define _MBSF_OPEN5GS_SBI_REQUEST_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Request interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Request interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -28,10 +29,13 @@
 
 MBSF_NAMESPACE_START
 
+class Open5GSSBIMessage;
+
 class Open5GSSBIRequest {
 public:
     Open5GSSBIRequest(ogs_sbi_request_t *request, bool owner = true) :m_request(request), m_owner(owner) {};
     Open5GSSBIRequest(const std::string &method, const std::string &uri, const std::string &apiVersion, const std::optional<std::string> &data, const std::optional<std::string> &type);
+    Open5GSSBIRequest(Open5GSSBIMessage &message);
     Open5GSSBIRequest() = delete;
     Open5GSSBIRequest(Open5GSSBIRequest &&other) = delete;
     Open5GSSBIRequest(const Open5GSSBIRequest &other) = delete;
@@ -46,6 +50,10 @@ public:
 
     std::string headerValue(const std::string &field, const std::string &defval = std::string()) const;
 
+    const char *serviceName() const { return m_request?(m_request->h.service.name):nullptr; };
+    const char *apiVersion() const { return m_request?(m_request->h.api.version):nullptr; };
+    const char *resourceComponent(size_t idx) const;
+    const char *method() const { return m_request?(m_request->h.method):nullptr; };
     const char *content() const { return m_request?m_request->http.content:nullptr; };
     const char *uri() const { return m_request?m_request->h.uri:nullptr; };
     void setOwner(bool owner) { m_owner = owner; };
@@ -59,4 +67,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_SBI_REQUEST_HH_ */
+#endif /* _MBSF_OPEN5GS_SBI_REQUEST_HH_ */

@@ -1,8 +1,9 @@
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS Application interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS Application interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -31,6 +32,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "mb-smf-service-consumer.h"
+
 // App header includes
 #include "common.hh"
 #include "App.hh"
@@ -52,7 +55,7 @@ Open5GSNetworkFunction::Service::Service(const char *serviceName, const char *su
     ,m_supportedFeatures(supportedFeatures)
     ,m_apiVersion(apiVersion)
     ,m_addrs(addr)
-    ,m_capacity(100)	
+    ,m_capacity(100)
 {
 
 }
@@ -68,7 +71,7 @@ Open5GSNetworkFunction::Service::Service(const char *serviceName, const char *su
 
 Open5GSNetworkFunction::Open5GSNetworkFunction()
     :m_eventThread(nullptr)
-    ,m_nfServices()	
+    ,m_nfServices()
     ,m_serverName()
 {
     if (ogs_env_set("TZ", "UTC") != OGS_OK) {
@@ -98,8 +101,10 @@ static EventTerminationTimerFunc __event_term_timer_func;
 Open5GSNetworkFunction::~Open5GSNetworkFunction()
 {
     // Terminate Open5GS SBI FSMs
+    void *instance;
     ogs_sbi_nf_instance_t *nf_instance = NULL;
-    ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance) {
+    ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, instance) {
+        nf_instance = reinterpret_cast<ogs_sbi_nf_instance_t *>(instance);
         ogs_sbi_nf_fsm_fini(nf_instance);
     }
 
@@ -116,8 +121,21 @@ Open5GSNetworkFunction::~Open5GSNetworkFunction()
 
     sbiClose();
 
+    mb_smf_sc_terminate();
+
     ogs_sbi_context_final();
 }
+
+void Open5GSNetworkFunction::initialise() {
+    const char *mb_smf_client_sect = "mbsmfsc";
+    ogs_sbi_context_init(nfType());
+     /* initialise local settings */
+    int rv = ogs_app_parse_local_conf("mbsf");
+    if (rv != OGS_OK) {
+        ogs_fatal("Unable to parse local configuration");
+    }
+    mb_smf_sc_parse_config(mb_smf_client_sect);
+};
 
 static void timer_function(void *real_fn)
 {
@@ -199,7 +217,7 @@ static int server_cb(ogs_sbi_request_t *request, void *data)
 bool Open5GSNetworkFunction::addNFService(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addrs, std::optional<int> capacity)
 {
     m_nfServices.emplace_back(serviceName, supportedFeatures, apiVersion, addrs, capacity);
-    return true;    
+    return true;
 }
 
 
@@ -213,13 +231,12 @@ int Open5GSNetworkFunction::setNFServices(const char *serviceName, const char *s
 
     ogs_info("NF UUID: %s", id);
 
-    nf_service = ogs_sbi_nf_service_add(ogs_sbi_self()->nf_instance, id, serviceName,
-                                        ogs_sbi_self()->tls.server.scheme);
+    nf_service = ogs_sbi_nf_service_add(ogs_sbi_self()->nf_instance, id, serviceName, ogs_sbi_self()->tls.server.scheme);
     ogs_assert(nf_service);
 
     addAddressesToNFService(nf_service, addrs);
     ogs_sbi_nf_service_add_version(nf_service, OGS_SBI_API_V1, apiVersion, NULL);
-    nf_service->supported_features = ogs_strdup(supportedFeatures);
+    if (supportedFeatures) nf_service->supported_features = ogs_strdup(supportedFeatures);
     if(capacity.has_value() && *capacity != 0 ) nf_service->capacity = *capacity;
     ogs_info("MBSF Service [%s]", nf_service->name);
     if (!nf_service) return OGS_ERROR;
@@ -238,9 +255,11 @@ int Open5GSNetworkFunction::setServerName(void) {
 
     ogs_sbi_server_t *server = NULL;
     char server_name[NI_MAXHOST];
+    void *srv;
 
-    ogs_list_for_each(&ogs_sbi_self()->server_list, server) {
+    ogs_list_for_each(&ogs_sbi_self()->server_list, srv) {
 
+        server = reinterpret_cast<ogs_sbi_server_t *>(srv);
         ogs_sockaddr_t *advertise = NULL;
         int res = 0;
 
@@ -248,18 +267,18 @@ int Open5GSNetworkFunction::setServerName(void) {
         if (!advertise)
             advertise = server->node.addr;
         ogs_assert(advertise);
-	res = getnameinfo((struct sockaddr *) &advertise->sa,
+        res = getnameinfo((struct sockaddr *) &advertise->sa,
                       ogs_sockaddr_len(advertise),
                       server_name, NI_MAXHOST,
                       NULL, 0, NI_NAMEREQD);
 
-        if(res) {
+        if (res) {
             ogs_debug("Unable to retrieve server name: %d\n", res);
             continue;
         } else {
             ogs_debug("node=%s", server_name);
             ogs_info("SERVER NAME NODE=%s", server_name);
-	    m_serverName = server_name;
+            m_serverName = server_name;
             return 1;
         }
     }
@@ -276,16 +295,14 @@ bool Open5GSNetworkFunction::sbiOpen()
     ogs_sbi_nf_instance_build_default(nf_instance);
 
     for (const auto &nfservice : m_nfServices) {
-	if (nfservice.capacity().has_value()) {
+        if (nfservice.capacity().has_value()) {
             services_capacity += nfservice.capacity().value();
         }
-    
-	if(setNFServices(nfservice.serviceName(), nfservice.supportedFeatures(), nfservice.apiVersion(), nfservice.sockAddrs(),
-                         nfservice.capacity()) != OGS_OK) {
-	    return OGS_ERROR;	
-	}
-	
-        
+
+        if (setNFServices(nfservice.serviceName(), nfservice.supportedFeatures(), nfservice.apiVersion(), nfservice.sockAddrs(),
+                          nfservice.capacity()) != OGS_OK) {
+            return OGS_ERROR;
+        }
     }
 
     if(services_capacity) ogs_sbi_self()->nf_instance->capacity = services_capacity;
@@ -359,8 +376,8 @@ void Open5GSNetworkFunction::addAddressesToNFService(ogs_sbi_nf_service_t *nf_se
     for (const auto &addrs: addresses) {
 
         for (ogs_copyaddrinfo(&addr, addrs->ogsSockAddr()); addr && nf_service->num_of_addr < OGS_SBI_MAX_NUM_OF_IP_ADDRESS;
-			addr = addr->next) 
-	{
+                        addr = addr->next)
+        {
             bool is_port = true;
             int port = 0;
 

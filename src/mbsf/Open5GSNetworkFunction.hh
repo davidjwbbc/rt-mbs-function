@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_NETWORK_FUNCTION_HH_
-#define _MBS_TF_OPEN5GS_NETWORK_FUNCTION_HH_
+#ifndef _MBSF_OPEN5GS_NETWORK_FUNCTION_HH_
+#define _MBSF_OPEN5GS_NETWORK_FUNCTION_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS Application interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS Application interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -43,27 +44,27 @@ class Open5GSNetworkFunction {
 public:
     class Service {
     public:
-	Service() = delete;    
+        Service() = delete;
         Service(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addr);
-	Service(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addr, const std::optional<int> capacity = std::nullopt);
-	Service(Service &other) = delete;
-	Service(Service &&other) = delete;
-	Service &operator=(Service &&other) = delete;
+        Service(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addr, const std::optional<int> capacity = std::nullopt);
+        Service(Service &other) = delete;
+        Service(Service &&other) = delete;
+        Service &operator=(Service &&other) = delete;
         Service &operator=(const Service &other) = delete;
 
-	virtual ~Service() {};
-	const char *serviceName() const { return m_serviceName; };
-	const char *supportedFeatures() const { return m_supportedFeatures;};
-	const char *apiVersion() const { return m_apiVersion; };
-	const std::optional<int> capacity() const { return m_capacity; };
-	const std::vector<std::shared_ptr<Open5GSSockAddr> > &sockAddrs() const {return m_addrs;};
+        virtual ~Service() {};
+        const char *serviceName() const { return m_serviceName; };
+        const char *supportedFeatures() const { return m_supportedFeatures;};
+        const char *apiVersion() const { return m_apiVersion; };
+        const std::optional<int> capacity() const { return m_capacity; };
+        const std::vector<std::shared_ptr<Open5GSSockAddr> > &sockAddrs() const {return m_addrs;};
 
     private:
         const char *m_serviceName;
         const char *m_supportedFeatures;
         const char *m_apiVersion;
         const std::vector<std::shared_ptr<Open5GSSockAddr> > m_addrs;
-	const std::optional<int> m_capacity;
+        const std::optional<int> m_capacity;
     };
 
     Open5GSNetworkFunction();
@@ -94,7 +95,7 @@ public:
     bool addNFService(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addr, std::optional<int> capacity = std::nullopt);
     int setNFServices(const char *serviceName, const char *supportedFeatures, const char *apiVersion, const std::vector<std::shared_ptr<Open5GSSockAddr> > &addrs, std::optional<int> capacity = std::nullopt);
 
-    void initialise() {ogs_sbi_context_init(nfType());};
+    void initialise();
 
     virtual OpenAPI_nf_type_e nfType() const { return OpenAPI_nf_type_AF; };
     const std::string &serverName();
@@ -119,4 +120,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_NETWORK_FUNCTION_HH_ */
+#endif /* _MBSF_OPEN5GS_NETWORK_FUNCTION_HH_ */

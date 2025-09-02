@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_SBI_SERVER_HH_
-#define _MBS_TF_OPEN5GS_SBI_SERVER_HH_
+#ifndef _MBSF_OPEN5GS_SBI_SERVER_HH_
+#define _MBSF_OPEN5GS_SBI_SERVER_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Server interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Server interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -50,8 +51,10 @@ public:
     void ogsSBIServerAdvertise(ogs_sockaddr_t *addr);
     ogs_sbi_server_t *ogsSBIServer() { return m_ogsServer; };
 
-    static bool sendError(Open5GSSBIStream &stream, std::optional<Open5GSSBIMessage> message, const fiveg_mag_reftools::ProblemCause &cause, const char *reason);
-    static bool sendError(Open5GSSBIStream &stream, int status_code, std::optional<Open5GSSBIMessage> message, const char *title, const char *reason, const char *cause);
+    static bool sendError(Open5GSSBIStream &stream, std::optional<Open5GSSBIMessage> message,
+                          const fiveg_mag_reftools::ProblemCause &cause, const char *reason);
+    static bool sendError(Open5GSSBIStream &stream, int status_code, std::optional<Open5GSSBIMessage> message, const char *title,
+                          const char *reason, const char *cause);
     static bool sendResponse(Open5GSSBIStream &stream, Open5GSSBIResponse &response);
 
     operator bool() const { return !!m_ogsServer; };
@@ -64,4 +67,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_SBI_SERVER_HH_ */
+#endif /* _MBSF_OPEN5GS_SBI_SERVER_HH_ */

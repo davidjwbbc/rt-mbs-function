@@ -1,0 +1,78 @@
+#ifndef _MBSF_NMB2_BUILD_HH_
+#define _MBSF_NMB2_BUILD_HH_
+/******************************************************************************
+ * 5G-MAG Reference Tools: MBS Function: Nmb2 DistSession Build class
+ ******************************************************************************
+ * Copyright: (C)2025 British Broadcasting Corporation
+ * Author(s): Dev Audsin <dev.audsin@bbc.co.uk>
+ * License: 5G-MAG Public License v1
+ *
+ * Licensed under the License terms and conditions for use, reproduction, and
+ * distribution of 5G-MAG software (the “License”).  You may not use this file
+ * except in compliance with the License.  You may obtain a copy of the License at
+ * https://www.5g-mag.com/reference-tools.  Unless required by applicable law or
+ * agreed to in writing, software distributed under the License is distributed on
+ * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.
+ *
+ * See the License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#include "ogs-app.h"
+#include "ogs-proto.h"
+#include "ogs-sbi.h"
+
+#include <any>
+#include <chrono>
+#include <memory>
+#include <tuple>
+#include <mutex>
+#include "openapi/model/MBSUserDataIngSession.h"
+#include "common.hh"
+
+
+namespace fiveg_mag_reftools {
+    class CJson;
+}
+
+namespace reftools::mbsf {
+    class MBSUserDataIngSession;
+    class Ssm;
+}
+
+using fiveg_mag_reftools::CJson;
+using reftools::mbsf::MBSUserDataIngSession;
+using reftools::mbsf::MBSDistributionSessionInfo;
+using reftools::mbsf::Ssm;
+
+MBSF_NAMESPACE_START
+
+class Open5GSEvent;
+class Open5GSSBIRequest;
+class Open5GSSBIObject;
+class DistributionSession;
+class MBSMFMBSSession;
+
+class Nmb2Build {
+public:
+    Nmb2Build();
+    Nmb2Build(Nmb2Build &&other) = delete;
+    Nmb2Build(const Nmb2Build &other) = delete;
+    Nmb2Build &operator=(Nmb2Build &&other) = delete;
+    Nmb2Build &operator=(const Nmb2Build &other) = delete;
+
+    static ogs_sbi_request_t *buildNmb2DistSession(void *data);
+    static bool sendNmb2DistSession(void *data);
+    static bool sendNmb2DistSessionDelete(void *data);
+
+private:
+    ogs_sbi_request_t *m_request;
+};
+
+MBSF_NAMESPACE_STOP
+
+
+/* vim:ts=8:sts=4:sw=4:expandtab:
+ */
+#endif /* _MBSF_NMB2_BUILD_HH_ */

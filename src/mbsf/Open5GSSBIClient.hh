@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_SBI_CLIENT_HH_
-#define _MBS_TF_OPEN5GS_SBI_CLIENT_HH_
+#ifndef _MBSF_OPEN5GS_SBI_CLIENT_HH_
+#define _MBSF_OPEN5GS_SBI_CLIENT_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Client interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Client interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -45,6 +46,9 @@ public:
 
     ogs_sockaddr_t *ogsSockaddr(std::shared_ptr<Open5GSSBIClient> &client);
     ogs_sbi_client_t *ogsSBIClient() { return m_ogsClient; };
+    ogs_sockaddr_t *ogsSBIClientIPv4Addr() { return m_ogsClient->addr; };
+    ogs_sockaddr_t *ogsSBIClientIPv6Addr() { return m_ogsClient->addr6; };
+    char *ogsIpStrdup(ogs_sockaddr_t *addr) {return ogs_ipstrdup(addr); };
 
     /*static*/ bool sendRequest(ogs_sbi_client_cb_f client_notify_cb,  std::shared_ptr<Open5GSSBIRequest> request, void *data);
 
@@ -58,5 +62,5 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_SBI_CLIENT_HH_ */
+#endif /* _MBSF_OPEN5GS_SBI_CLIENT_HH_ */
 

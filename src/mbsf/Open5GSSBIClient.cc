@@ -62,7 +62,9 @@ Open5GSSBIClient::Open5GSSBIClient(const std::string &url)
      }
      m_ogsClient = ogs_sbi_client_add(scheme, fqdn, fqdn_port, addr, addr6);
      ogs_assert(client);
-     ogs_freeaddrinfo(addr);
+     if(fqdn) ogs_free(fqdn);
+     if(addr) ogs_freeaddrinfo(addr);
+     if(addr6) ogs_freeaddrinfo(addr6);
 }
 
 Open5GSSBIClient::Open5GSSBIClient(const char *hostname, int port)
@@ -74,19 +76,19 @@ Open5GSSBIClient::Open5GSSBIClient(const char *hostname, int port)
     rv = ogs_getaddrinfo(&addr, AF_UNSPEC, hostname, port, 0);
     if (rv != OGS_OK) {
         ogs_error("getaddrinfo failed");
-	throw std::runtime_error("getaddrinfo failed!");
+        throw std::runtime_error("getaddrinfo failed!");
     }
 
     if (addr == nullptr) {
         ogs_error("Could not get the address of the Application Server");
-	throw std::runtime_error("Unable to get client address!");
+        throw std::runtime_error("Unable to get client address!");
     }
 
     m_ogsClient = ogs_sbi_client_add(scheme, const_cast<char*>(hostname), port,
                                      (addr->ogs_sa_family == AF_INET)?addr:NULL, (addr->ogs_sa_family == AF_INET6)?addr:NULL);
     ogs_assert(m_ogsClient);
 
-    ogs_freeaddrinfo(addr);
+    if(addr) ogs_freeaddrinfo(addr);
 }
 
 Open5GSSBIClient::~Open5GSSBIClient()
@@ -105,4 +107,3 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-

@@ -22,19 +22,23 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <optional>
 
 #include "ogs-sbi.h"
 #include "ogs-app.h"
 
 #include "common.hh"
+#include "MBSMFMBSSession.hh"
 
 MBSF_NAMESPACE_START
 
+class MBSSession;
 class Open5GSSBIServer;
 class Open5GSSBIClient;
 class Open5GSSockAddr;
 class Open5GSYamlIter;
 class UserService;
+class UserDataIngSession;
 
 class Context {
 public:
@@ -49,32 +53,39 @@ public:
 
     std::vector <std::shared_ptr<Open5GSSockAddr> > MBSFUserServicesAddresses();
     std::vector <std::shared_ptr<Open5GSSockAddr> > MBSFUserDataIngestSessionAddresses();
-    
+
     void addUserService(const std::shared_ptr<UserService> &userService);
     void deleteUserService(const std::string &userServiceId);
+    void addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &userIngSession);
+    void deleteUserDataIngSession(const std::string &userIngSessionId);
+    void addMbSmfMbsSession(const std::shared_ptr<MBSMFMBSSession> &session);
+    void deleteMbSmfMbsSession(const mb_smf_sc_ssm_addr_t *ssm);
+    int load();
 
     enum ServerType {
-	MBS_USER_SERVICES,
-	MBS_USER_DATA_INGEST_SESSION,
+        MBS_USER_SERVICES,
+        MBS_USER_DATA_INGEST_SESSION,
         SERVER_MAX_NUM
     };
 
     std::map<std::string, std::shared_ptr<UserService> > UserServices;
+    std::map<std::string, std::shared_ptr<UserDataIngSession> > UserDataIngSessions;
+    std::map<const mb_smf_sc_ssm_addr_t *, std::shared_ptr<MBSMFMBSSession> > MBSMFMBSSessions;
+
     std::vector<std::shared_ptr<Open5GSSBIServer> > servers[SERVER_MAX_NUM];
-    
+
     struct {
         unsigned int defaultMaxAge;
         unsigned int MBSUserServiceMaxAge;
         unsigned int MBSUserDataIngestSessionMaxAge;
-
     } cacheControl;
 
     struct {
-       
         int activeDistributionSessionsSoftLimit;
         int activeUserServicesSoftLimit;
-
     } capacity;
+
+    std::optional<std::string> allowedMulticastRange;
 
 private:
     void parseCacheControl(Open5GSYamlIter &iter);

@@ -1,10 +1,11 @@
-#ifndef _MBS_TF_OPEN5GS_SBI_MESSAGE_HH_
-#define _MBS_TF_OPEN5GS_SBI_MESSAGE_HH_
+#ifndef _MBSF_OPEN5GS_SBI_MESSAGE_HH_
+#define _MBSF_OPEN5GS_SBI_MESSAGE_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Traffic Function: Open5GS SBI Message interface
+ * 5G-MAG Reference Tools: MBS Function: Open5GS SBI Message interface
  ******************************************************************************
- * Copyright: (C)2024 British Broadcasting Corporation
+ * Copyright: (C)2024-2025 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
+ *            Dev Audsin <dev.audsin@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * Licensed under the License terms and conditions for use, reproduction, and
@@ -47,6 +48,8 @@ public:
 
     void parseHeader(Open5GSSBIRequest &request);
     void parseHeader(Open5GSSBIResponse &response);
+    void parseRequest(Open5GSSBIRequest &request);
+    void parseResponse(Open5GSSBIResponse &response);
 
     const char *serviceName() const { return m_message?(m_message->h.service.name):nullptr; };
     const char *apiVersion() const { return m_message?(m_message->h.api.version):nullptr; };
@@ -55,6 +58,11 @@ public:
     const char *uri() const { return m_message?(m_message->h.uri):nullptr; };
     const char *location() const { return m_message?(m_message->http.location):nullptr; };
     const char *cacheControl() const { return m_message?(m_message->http.cache_control):nullptr; };
+
+    Open5GSSBIMessage &method(char *method);
+    Open5GSSBIMessage &serviceName(char *service_name);
+    Open5GSSBIMessage &apiVersion(char *api_version);
+    Open5GSSBIMessage &resourceComponent(size_t idx, char *resource_component);
 
     const OpenAPI_nf_profile_t *nfProfile() const { return m_message?(m_message->NFProfile):nullptr; };
     void nfProfile(OpenAPI_nf_profile_t *profile) {
@@ -93,4 +101,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBS_TF_OPEN5GS_SBI_MESSAGE_HH_ */
+#endif /* _MBSF_OPEN5GS_SBI_MESSAGE_HH_ */

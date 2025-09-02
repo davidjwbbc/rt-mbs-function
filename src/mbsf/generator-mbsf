@@ -154,7 +154,7 @@ if [ -n "$CACHE_DIR" ]; then
     templates_dir="$CACHE_DIR/templates"
 else
     templates_dir=`mktemp -d 'templates-XXXXXXXX'`
-    trap 0 'rm -rf "$templates_dir"'
+    trap "rm -rf '$templates_dir'" 0 1 2 3 4 5 6 7 8 10 11 12 13 14
 fi
 mkdir -p "$templates_dir"
 
