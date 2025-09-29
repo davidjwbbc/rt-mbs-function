@@ -60,27 +60,34 @@ class MBSMFMBSSession;
 class UserDataIngSession {
 public:
     using SysTimeMS = std::chrono::system_clock::time_point;
+    
+    //Pair containing User Data Ing Session Id and key for the Dist Session Info
     using UserDataIngDistSessId = std::pair<std::string, std::string>;
+    
+    //Pair containing Distribution Session ID sent to the MBSTF and the above UserDataIngDistSessId
     using SessionIdContainer = std::pair<std::string, std::shared_ptr< UserDataIngDistSessId >>;
+
     struct ContextData {
         std::string ingSessionId;
         std::string distSessionInfoKey;
         std::shared_ptr<MBSDistributionSessionInfo> info;
         std::shared_ptr<Ssm> ssm;
-        std::shared_ptr<Open5GSEvent> event;
-        ogs_sbi_nf_instance_t *mbstfInstance;
-               ogs_sbi_xact_t *mbstfXact;
+	std::shared_ptr<Open5GSSBIRequest> request;
+        ogs_pool_id_t streamId;
         std::shared_ptr<MBSMFMBSSession> MBSSession;
         bool hasMBSSession;
         bool receivedMBSTFResponse;
         std::string distSessionId;
-
+	bool MBSTFDistSessionDeleted;
+	std::string mbstfNFInstanceId;
+        /*	
         ~ContextData() {
             MBSSession.reset();
         }
+	*/
+	
     };
     UserDataIngSession(CJson &json, bool as_request);
-    UserDataIngSession(CJson &json, bool as_request, std::shared_ptr<Open5GSEvent> &event);
     UserDataIngSession(const std::shared_ptr<MBSUserDataIngSession> &mbs_user_service);
     UserDataIngSession() = delete;
     UserDataIngSession(UserDataIngSession &&other) = delete;
@@ -97,58 +104,71 @@ public:
         MBSF_LOCAL_SEND_MBSTF_DELETE_SESSION
     };
 
-    static const char *localEventGetName( ogs_event_t *event);
-
-    static const std::shared_ptr<UserDataIngSession> &find(const std::string &id); // throws std::out_of_range if id does not exist
     const std::string &userDataIngSessionId() const { return m_UserDataIngSessionId; };
     const std::shared_ptr<MBSUserDataIngSession> &getMBSUserIngSession() const {return m_MBSUserDataIngSession;};
     const SysTimeMS &generated() const {return m_generated;};
     const std::string &hash() const {return m_hash;};
-    const Open5GSSBIObject *getSbiObject() {return m_sbiObject;};
 
     ogs_sbi_xact_t *nmbstfDiscoverOnly(std::shared_ptr< ContextData > data);
-    void processDistributionSessionInfo(std::shared_ptr<MBSUserDataIngSession> mbs_user_data_ing_session, std::shared_ptr<Open5GSEvent> &event);
-    static bool processEvent(Open5GSEvent &event);
+    ogs_sbi_xact_t *nmbstfDiscoverAndSend( std::shared_ptr< UserDataIngSession::UserDataIngDistSessId> ids, ogs_sbi_build_f build, void *context, void *data);
+    UserDataIngSession &setNFInstance(ogs_sbi_service_type_e service_type, ogs_sbi_nf_instance_t *nf_instance);
+
+    void processDistributionSessionInfo( ogs_pool_id_t stream_id, std::shared_ptr<Open5GSSBIRequest> &request);
     const std::shared_ptr<UserDataIngSession> &findSessionBySbiObject(const std::shared_ptr<Open5GSSBIObject>& sbi_obj);
-    static bool handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact);
-
-    static bool processDistSession(std::shared_ptr< DistSession > dist_session);
-    static std::shared_ptr< ObjDistributionOperatingMode > getOperatingMode(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static std::shared_ptr< ObjAcquisitionMethod > getAcquisitionMethod(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static std::optional<std::string> getObjectIngestUrl(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static std::optional<std::string> getObjectDistributionUrl(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static std::list<std::optional<std::string >, fiveg_mag_reftools::OgsAllocator<std::optional<std::string > > > getObjectAcquisitionIds(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static std::string maxContBitRate(std::shared_ptr<MBSDistributionSessionInfo> info);
-    static bool tmgi(std::string mbs_service_id, std::string mcc, std::string mnc, void *data);
-
     void addToDistributionSessionInfos(const std::string &key, const std::shared_ptr< ContextData > context);
     std::shared_ptr< UserDataIngSession::ContextData > getDistributionSessionInfoData(std::string &key);
     void removeDistributionSessionInfo(std::string &key);
-    static void removeDistributionSessionInfos(void *data);
     void clearDistributionSessionInfos();
-
-    static std::shared_ptr< ContextData > getContextData(std::shared_ptr<UserDataIngDistSessId> &ids);
+    
     void removeContextData(std::shared_ptr<ContextData> context_data);
 
     void sendMbstfRequests();
-    void sendMbstfDeleteRequestsOnError();
+    void sendMbstfDelRequests();
     void sendLocalEvent(OgsExtendedEventId event_id, void *data);
     bool sendNmbsfMbsUserDataIngestResponse(std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> &ids);
-
-
+    
+    bool checkIfAllMBSTFDistSessionDeleted();
     void checkIfAllMBSSessionCreated();
-    static void setMBSSessionFlag(void *data);
     bool checkIfAllMBSTFResponsesReceived();
-    static void populateAndSendError(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt, const std::optional<CJson> &problem_detail_json = std::nullopt);
+
+    static const char *localEventGetName( ogs_event_t *event);
+
+    static const std::shared_ptr<UserDataIngSession> &find(const std::string &id); // throws std::out_of_range if id does not exist
+    
+    static void setMBSSessionFlag(void *data);
+    static void setMBSTFDistSessionDeletedFlag(std::string &dist_session_id);
+    static bool processEvent(Open5GSEvent &event);
+    static bool handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact);
+
+    static bool processDistSession(std::shared_ptr< DistSession > dist_session);
+    static std::shared_ptr< ObjDistributionOperatingMode > getOperatingMode(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static std::shared_ptr< ObjAcquisitionMethod > getAcquisitionMethod(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static std::optional<std::string> getObjectIngestUrl(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static std::optional<std::string> getObjectDistributionUrl(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static std::list<std::optional<std::string >, fiveg_mag_reftools::OgsAllocator<std::optional<std::string > > > getObjectAcquisitionIds(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static std::string maxContBitRate(std::shared_ptr<MBSDistributionSessionInfo> &info);
+    static bool tmgi(std::string mbs_service_id, std::string mcc, std::string mnc, void *data);
+
+    static void removeDistributionSessionInfos(void *data);
+
+    static std::shared_ptr< ContextData > getContextData(std::shared_ptr<UserDataIngDistSessId> &ids);
+
+    static void handleMBSSessionError(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt, 
+		    const std::optional<CJson> &problem_detail_json = std::nullopt);
+    static void populateAndSendError(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt, 
+		    const std::optional<CJson> &problem_detail_json = std::nullopt);
     static void deleteMBSTFSession(ogs_sbi_xact_t *xact);
 
-    void addToRegistry(ogs_sbi_xact_t* xact, std::shared_ptr< UserDataIngDistSessId > &ids);
-    void removeFromRegistry(ogs_sbi_xact_t* xact);
-    std::shared_ptr< UserDataIngDistSessId > getFromRegistry(ogs_sbi_xact_t* xact);
+    static void addToRegistry(ogs_sbi_xact_t* xact, std::shared_ptr< UserDataIngDistSessId > &ids);
+    static void removeFromRegistry(ogs_sbi_xact_t* xact);
+    static std::shared_ptr< UserDataIngDistSessId > getFromRegistry(ogs_sbi_xact_t* xact);
 
-    void addToRegistry(std::string &dist_session_id, std::shared_ptr< UserDataIngDistSessId > &ids);
-    void removeFromRegistry(std::string &dist_session_id);
-    std::shared_ptr< UserDataIngDistSessId > getFromRegistry(std::string &dist_session_id);
+    static void addToRegistry(std::string dist_session_id, std::shared_ptr< UserDataIngDistSessId > &ids);
+    static void removeFromRegistry(std::string &dist_session_id);
+    static std::shared_ptr< UserDataIngDistSessId > getFromRegistry(std::string &dist_session_id);
+
+    static void removeXact(ogs_sbi_xact_t* xact);
+    static int numberOfDistributionSessions();
 
     static std::recursive_mutex m_mutex;
     static std::map<ogs_sbi_xact_t *, std::shared_ptr< UserDataIngDistSessId >> m_xactRegistry;
@@ -156,12 +176,14 @@ public:
 
 private:
     std::shared_ptr<MBSUserDataIngSession> m_MBSUserDataIngSession;
+    std::unique_ptr<Open5GSSBIObject> m_sbiObject;
     SysTimeMS m_generated;
     SysTimeMS m_lastUsed;
     std::string m_hash;
     std::string m_UserDataIngSessionId;
-    Open5GSSBIObject *m_sbiObject;
     std::recursive_mutex m_rmutex;
+
+    //key: Dist Session Infos present in this User Data Ingest Session
     std::map<std::string, std::shared_ptr< ContextData >> m_distributionSessionInfos;
 
 };

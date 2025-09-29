@@ -46,8 +46,13 @@ MBSMFMBSSession::MBSMFMBSSession(mb_smf_sc_mbs_session_t *session)
 
 MBSMFMBSSession::~MBSMFMBSSession()
 {
+    //deleteSession();
+}
+
+void MBSMFMBSSession::deleteSession()
+{
     mb_smf_sc_mbs_session_delete(m_session);
-    mb_smf_sc_mbs_session_push_changes(m_session);
+    mb_smf_sc_mbs_session_push_changes(m_session);	
 }
 
 MBSMFMBSSession &MBSMFMBSSession::setSession(mb_smf_sc_mbs_session_t *session)
@@ -58,12 +63,12 @@ MBSMFMBSSession &MBSMFMBSSession::setSession(mb_smf_sc_mbs_session_t *session)
     return *this;
 };
 
-bool MBSMFMBSSession::processEvent(ogs_event_t *event)
+bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
 {
+    ogs_event_t *event = MBSMFEvent.ogsEvent();
     switch (event->id) {
     case MBSF_LOCAL:
         {
-            ogs_info("PROCESSING MBSF_LOCAL");
             LocalEvent *mbsf_event = ogs_container_of(event, LocalEvent, event);
 
             switch (mbsf_event->id) {
@@ -76,10 +81,15 @@ bool MBSMFMBSSession::processEvent(ogs_event_t *event)
                             char buf[OGS_PLMNIDSTRLEN];
                             mb_smf_sc_tmgi_t *tmgi = mbsf_event->mbs_session->tmgi;
 
-                            ogs_info("  TMGI = %s (PLMN = %s) MCC = [%s], MNC = [%s]", tmgi->mbs_service_id, ogs_plmn_id_to_string(&tmgi->plmn, buf), ogs_plmn_id_mcc_string(&tmgi->plmn), ogs_plmn_id_mnc_string(&tmgi->plmn));
+			    char *plmn_id = ogs_plmn_id_to_string(&tmgi->plmn, buf);
+			    char *mcc = ogs_plmn_id_mcc_string(&tmgi->plmn);
+			    char *mnc = ogs_plmn_id_mnc_string(&tmgi->plmn);
 
-                            UserDataIngSession::tmgi(std::string(tmgi->mbs_service_id), std::string(ogs_plmn_id_mcc_string(&tmgi->plmn)), std::string(ogs_plmn_id_mnc_string(&tmgi->plmn)), event->sbi.data);
-                        } else {
+                            UserDataIngSession::tmgi(std::string(tmgi->mbs_service_id), std::string(mcc), std::string(mnc), event->sbi.data);
+			    ogs_free(mcc);
+			    ogs_free(mnc);
+                        
+			} else {
                             ogs_error("TMGI request failed");
                         }
                     }
@@ -90,41 +100,49 @@ bool MBSMFMBSSession::processEvent(ogs_event_t *event)
                             for (sa = mbsf_event->mbs_session->mb_upf_udp_tunnel; sa; sa = sa->next) {
 
                                 if(sa->ogs_sa_family == AF_INET) {
-                                    ogs_info("Recieved IPv4 tunnel address");
+                                    ogs_debug("Recieved IPv4 tunnel address");
                                 } else if(sa->ogs_sa_family == AF_INET6) {
-                                    ogs_info("Recieved IPv6 tunnel address");
+                                    ogs_debug("Recieved IPv6 tunnel address");
                                 }
 
                                 OGS_ADDR(sa, buf);
-                                ogs_info("  UDP Tunnel = %s:%u", buf, OGS_PORT(sa));
+                                ogs_debug("  UDP Tunnel = %s:%u", buf, OGS_PORT(sa));
                             }
                         } else {
                             ogs_error("UDP tunnel request failed");
                         }
                     }
+		    UserDataIngSession::setMBSSessionFlag(event->sbi.data);
                 } else if (mbsf_event->result == OGS_ERROR) {
                       if (mbsf_event->problem_details) {
-                          cJSON *problem = OpenAPI_problem_details_convertToJSON((OpenAPI_problem_details_t*)mbsf_event->problem_details);
-                          CJson problem_detail(problem, true);
 
-                          cJSON_Delete(problem);
+                          cJSON *problem = OpenAPI_problem_details_convertToJSON((OpenAPI_problem_details_t*)mbsf_event->problem_details);
+		          CJson problem_detail(problem, true);
+                          {
+                              char *txt = cJSON_Print(problem);
+			  }
                           if(mbsf_event->problem_details->cause) {
                               std::optional<fiveg_mag_reftools::ProblemCause> cause = MBSProblemCause::lookup(std::string(mbsf_event->problem_details->cause));
                               if(cause.has_value()) {
-                                  UserDataIngSession::populateAndSendError(event->sbi.data, cause.value(), problem_detail);
+				  {   
+				      fiveg_mag_reftools::ProblemCause &cause_val = cause.value();
+			              int status_code = cause_val.statusCode();
+			              const std::string &reason = cause_val.reason();
+			              const std::string &cause_str = cause_val.cause();
+				  }
+                                  UserDataIngSession::handleMBSSessionError(event->sbi.data, cause.value(), problem_detail);
                                   return true;
                               }
                          } else {
-                             UserDataIngSession::populateAndSendError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR, problem_detail);
+                             UserDataIngSession::handleMBSSessionError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR, problem_detail);
                          }
                          return true;
                     }
 
-                    UserDataIngSession::populateAndSendError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
+                    UserDataIngSession::handleMBSSessionError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
 
                 } else {
-                    ogs_warn("MBS Session creation failed");
-                    UserDataIngSession::populateAndSendError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
+                    UserDataIngSession::handleMBSSessionError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
                 }
                 return true;
             default:
@@ -190,8 +208,7 @@ void MBSMFMBSSession::mbsSessionCreatedCallback(mb_smf_sc_mbs_session_t *session
     /* callback for result of MBS Session create operation */
 
     /* queue result event */
-    ogs_info("MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT LOCAL EVT SEND");
-    sendLocalEvent(MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT, session, result, problem_details, data);
+    sendLocalEvent(MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT, session, result, problem_details?OpenAPI_problem_details_copy(nullptr, const_cast<OpenAPI_problem_details_s *> (problem_details)):nullptr, data);
 }
 
 MBSMFMBSSession &MBSMFMBSSession::setCreatedCallback(void *callback_data)

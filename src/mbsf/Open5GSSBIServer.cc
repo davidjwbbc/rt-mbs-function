@@ -50,7 +50,7 @@ Open5GSSBIServer::Open5GSSBIServer(ogs_sbi_server_t *server)
 
 Open5GSSBIServer::Open5GSSBIServer(ogs_socknode_t *node,  ogs_sockopt_t *option)
 {
-    m_ogsServer = ogs_sbi_server_add(nullptr /*ifc*/, ogs_sbi_self()->tls.server.scheme, node->addr, option);
+    m_ogsServer = ogs_sbi_server_add(nullptr /*ifc*/, ogs_sbi_self()->tls.server.scheme==OpenAPI_uri_scheme_NULL?OpenAPI_uri_scheme_http:ogs_sbi_self()->tls.server.scheme, node->addr, option);
     ogs_assert(m_ogsServer);
 }
 

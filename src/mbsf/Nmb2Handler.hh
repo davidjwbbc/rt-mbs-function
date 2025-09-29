@@ -65,7 +65,7 @@ public:
     static bool processEvent(Open5GSEvent &event);
 
 private:
-    ogs_sbi_response_t *m_response;
+
 };
 
 MBSF_NAMESPACE_STOP

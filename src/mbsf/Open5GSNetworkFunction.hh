@@ -100,7 +100,7 @@ public:
     virtual OpenAPI_nf_type_e nfType() const { return OpenAPI_nf_type_AF; };
     const std::string &serverName();
     const std::string &serverName() const { return m_serverName; };
-
+    virtual std::list<std::pair<OpenAPI_nf_type_e, std::string>> subscriptions() const { return {};};
 
 private:
     int setServerName();

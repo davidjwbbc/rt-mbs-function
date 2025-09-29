@@ -58,6 +58,7 @@
 #include "Open5GSYamlDocument.hh"
 #include "Open5GSNetworkFunction.hh"
 #include "UserService.hh"
+#include "openapi/model/CreateReqData.h"
 #include "openapi/model/DistSession.h"
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/IpAddr.h"
@@ -83,6 +84,7 @@
 #include "Nmb2Build.hh"
 
 using fiveg_mag_reftools::CJson;
+using reftools::mbsf::CreateReqData;
 using reftools::mbsf::DistSession;
 using reftools::mbsf::DistSessionState;
 using reftools::mbsf::MBSUserDataIngSession;
@@ -110,195 +112,7 @@ static std::shared_ptr< UpTrafficFlowInfo > populate_mbstf_up_traffic_flow_info(
 static std::shared_ptr< DistSessionState > populate_mbstf_dist_session_state();
 static std::string generate_uuid();
 
-#if 0
-std::shared_ptr<Open5GSSBIRequest> UserDataIngSession::buildNmbstfRequest()
-{
-    const std::string data = R"({
-  "distSession": {
-    "distSessionId": "f2db3860-b06d-43a0-bb9b-c94b40f78c58",
-    "distSessionState": "ACTIVE",
-    "mbUpfTunAddr": {
-      "ipv4Addr": "127.0.0.7",
-      "portNumber": 5454
-    },
-    "upTrafficFlowInfo": {
-      "destIpAddr": {
-        "ipv4Addr": "232.0.0.1"
-      },
-      "portNumber": 8081
-    },
-    "mbr": "10 Mbps",
-    "objDistributionData": {
-      "objDistributionOperatingMode": "STREAMING",
-      "objAcquisitionMethod": "PULL",
-      "objIngestBaseUrl": "http://media-origin-server:8080/",
-      "objAcquisitionIdsPull": [
-        "pc_hd_abr_v2_http.mpd"
-      ],
-      "objDistributionBaseUrl": "http://localhost:8081/"
-    }
-  }
-})";
-
-    const std::string type = "application/json";
-     std::shared_ptr<Open5GSSBIRequest> request;
-
-
-    //Open5GSSBIRequest(const std::string &method, const std::string &uri, const std::string &apiVersion, const std::optional<std::string> &data, const std::optional<std::string> &type);
-    request.reset( new Open5GSSBIRequest("POST", "nmbstf-distsession/v1/dist-sessions", OGS_SBI_API_V1, std::optional<std::string> {data}, std::optional<std::string>{type}));
-
-    return request;
-}
-
-#endif
-#if 0
-ogs_sbi_request_t *NMb2Build::buildNmb2DistSession(void *data)
-{
-
-    Open5GSSBIClient mbstf_client(reinterpret_cast<ogs_sbi_client_t*>(NF_INSTANCE_CLIENT(nf_instance)));
-    Open5GSSBIObject sbi_object(xact->sbi_object);
-    std::shared_ptr<MBSMFMBSSession> mb_smf_mbs_session;
-    ogs_info("HANDLER XACT: %p, SBI OBJ IN XACT: %p", xact, xact->sbi_object);
-    std::string src_ipv4_addr;
-    std::string src_ipv6_addr;
-    /*
-    if(doesSBIObjectMatch(xact)) {
-        ogs_info("NO MATCH: RET SBI OBJECT");
-        return false;
-    }
-    */
-
-    ogs_sockaddr_t *client_ipv4_addr =  mbstf_client.ogsSBIClientIPv4Addr();
-    ogs_sockaddr_t *client_ipv6_addr =  mbstf_client.ogsSBIClientIPv6Addr();
-
-    if(client_ipv4_addr) {
-        src_ipv4_addr = std::string(mbstf_client.ogsIpStrdup(client_ipv4_addr));
-        ogs_info("SRC IPv4 ADDR OF MBSTF: %s", src_ipv4_addr.c_str());
-    }
-
-    if(client_ipv6_addr) {
-         src_ipv6_addr = std::string(mbstf_client.ogsIpStrdup(client_ipv6_addr));
-         ogs_info("SRC IPv6 ADDR OF MBSTF: %s", src_ipv6_addr.c_str());
-    }
-
-
-        std::shared_ptr< UserDataIngSession::ContextData > context_data = nullptr;
-        {
-            std::lock_guard<std::recursive_mutex> lock(m_mutex);
-            auto it = m_xactRegistry.find(xact);
-            if (it != m_xactRegistry.end()) {
-                context_data = it->second;
-            }
-        }
-        if(!context_data) {
-            ogs_info("UNABLE TO GET CONTEXT DATA FROM REGISTRY");
-            return false;
-        }
-        //auto [self, ssm_ptr, event, nf_inst] = *context_data;
-        context_data->mbstfInstance = nf_instance;
-        context_data->mbstfXact = xact;
-
-        std::shared_ptr<Ssm> ssm_ptr = context_data->ssm;
-        if(!ssm_ptr) ogs_error("Unable to get SSM from Context Data");
-
-        //std::shared_ptr< IpAddr > src_ip_addr = ssm_ptr->getSourceIpAddr();
-        std::shared_ptr< IpAddr > dest_ip_addr = ssm_ptr->getDestIpAddr();
-        std::optional<std::string > dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-        std::optional<std::shared_ptr< std::string > > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
-
-        if(!client_ipv4_addr && !client_ipv6_addr) {
-            ogs_info("Source SSM cannot be resolved");
-            mb_smf_mbs_session.reset(new MBSMFMBSSession(mb_smf_sc_mbs_session_new()));
-            mb_smf_mbs_session->setTunnelRequest(true);
-
-        } else if (client_ipv4_addr && dest_ipv4_addr.has_value()) {
-            struct addrinfo *ai_src = NULL, *ai_dest = NULL;
-            void *src_addr = NULL, *dest_addr = NULL;
-
-            if(resolve_src_dest_addr(src_ipv4_addr, dest_ipv4_addr.value(), &ai_src, &ai_dest))
-            {
-                if(get_src_dest_of_same_addr_family(AF_INET, ai_src, ai_dest, &src_addr, &dest_addr))
-                {
-                     mb_smf_mbs_session.reset(new MBSMFMBSSession(
-                             mb_smf_sc_mbs_session_new_ipv4((const struct in_addr*)src_addr,
-                                                     (const struct in_addr*)dest_addr)));
-
-                } else {
-                    ogs_error("Unable to resolve SSM addresses for IPv4 address family");
-                    if(ai_src) {
-                        freeaddrinfo(ai_src);
-                        ai_src = NULL;
-                    }
-                    if(ai_dest) {
-                        freeaddrinfo(ai_dest);
-                        ai_dest = NULL;
-                    }
-                    return false;
-                }
-            }
-            if(ai_src) {
-                freeaddrinfo(ai_src);
-                ai_src = NULL;
-           }
-           if(ai_dest) {
-               freeaddrinfo(ai_dest);
-               ai_dest = NULL;
-           }
-
-       } else if (client_ipv6_addr && dest_ipv6_addr.has_value()) {
-           struct addrinfo *ai_src = NULL, *ai_dest = NULL;
-           void *src_addr = NULL, *dest_addr = NULL;
-           std::shared_ptr< std::string >  dest_ipv6 = dest_ipv6_addr.value();
-
-           if(resolve_src_dest_addr(src_ipv6_addr, *dest_ipv6, &ai_src, &ai_dest))
-           {
-               if(get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
-               {
-                   mb_smf_mbs_session.reset(new MBSMFMBSSession(
-                       mb_smf_sc_mbs_session_new_ipv6((const struct in6_addr*)src_addr,
-                               (const struct in6_addr*)dest_addr)));
-
-               } else {
-                   ogs_error("Unable to resolve SSM addresses for IPv6 address family");
-                   if(ai_src) freeaddrinfo(ai_src);
-                   if(ai_dest) freeaddrinfo(ai_dest);
-                   return false;
-               }
-           }
-           if(ai_src) freeaddrinfo(ai_src);
-           if(ai_dest) freeaddrinfo(ai_dest);
-
-       } else {
-           ogs_error("Unable to resolve SSM addresses");
-           return false;
-       }
-
-       //Add to context
-       if(mb_smf_mbs_session->ssm()) {
-
-           mb_smf_mbs_session->setTunnelRequest(true);
-           mb_smf_mbs_session->setTmgiRequest(true);
-
-           mb_smf_mbs_session->setServiceType(MBS_SERVICE_TYPE_MULTICAST);
-           if(!context_data->MBSSession) context_data->MBSSession = mb_smf_mbs_session;
-           mb_smf_mbs_session->setCreatedCallback(reinterpret_cast<void*>(context_data.get()));
-
-           mb_smf_mbs_session->setMBSTFInstance(nf_instance);
-           mb_smf_mbs_session->setXact(xact);
-           App::self().context()->addMbSmfMbsSession(mb_smf_mbs_session);
-
-           mb_smf_mbs_session->pushChanges();
-       } else {
-           ogs_info("MB-SMF SSM IS NULL");
-       }
-
-
-    return true;
-
-}
-#endif
-
-ogs_sbi_request_t *Nmb2Build::buildNmb2DistSession(void *data) {
+ogs_sbi_request_t *Nmb2Build::buildNmb2DistSession(void *context, void *data) {
 
     ogs_sbi_message_t msg;
 
@@ -309,140 +123,71 @@ ogs_sbi_request_t *Nmb2Build::buildNmb2DistSession(void *data) {
 
     std::shared_ptr< DistSession > dist_session = nullptr;
 
+    std::shared_ptr< CreateReqData > create_req_data = nullptr;
     memset(&msg, 0, sizeof(msg));
-    msg.h.method = (char*)OGS_SBI_HTTP_METHOD_POST;
-    msg.h.service.name = (char*)OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION;
-    msg.h.api.version = (char *)OGS_SBI_API_V1;
-    msg.h.resource.component[0] = (char *)ogs_strdup("dist-sessions");
+    msg.h.method = "POST"; /*OGS_SBI_HTTP_METHOD_POST*/;
+    msg.h.service.name = (char*)"nmbstf-distsession";
+    msg.h.api.version = (char *)"v1";
+    msg.h.resource.component[0] = (char *)"dist-sessions";
 
-    UserDataIngSession::UserDataIngDistSessId *ids = reinterpret_cast<UserDataIngSession::UserDataIngDistSessId*>(data);
-    std::shared_ptr< UserDataIngSession::UserDataIngDistSessId> ids_ptr = std::make_shared<UserDataIngSession::UserDataIngDistSessId>(*ids);
+    UserDataIngSession::UserDataIngDistSessId *ids = reinterpret_cast<UserDataIngSession::UserDataIngDistSessId*>(context);
+    std::shared_ptr< UserDataIngSession::UserDataIngDistSessId> ids_ptr(ids);
 
-    std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(ids_ptr->first);
+    try {
+        std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(ids_ptr->first);
+        std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr(ing_session->getDistributionSessionInfoData(ids_ptr->second));
 
-    //UserDataIngSession::ContextData *context_data = reinterpret_cast<UserDataIngSession::ContextData*>(data);
-    std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr = UserDataIngSession::getContextData(ids_ptr);
+        mbstf_obj_distribution_data = populate_mbstf_obj_distribution_data(context_data_ptr->info);
 
-    //auto context_data_ptr = std::make_shared<UserDataIngSession::ContextData>(*context_data);
-
-    mbstf_obj_distribution_data = populate_mbstf_obj_distribution_data(context_data_ptr->info);
-
-    std::shared_ptr< IpAddr  > dest_addr = context_data_ptr->ssm->getDestIpAddr();
-    mbstf_up_traffic_flow_info = populate_mbstf_up_traffic_flow_info(dest_addr);
+        std::shared_ptr< IpAddr  > dest_addr = context_data_ptr->ssm->getDestIpAddr();
+        mbstf_up_traffic_flow_info = populate_mbstf_up_traffic_flow_info(dest_addr);
 
 
-    ogs_sockaddr_t *tunnel_addr = context_data_ptr->MBSSession->tunnelAddr();
-    mbstf_mb_upf_tunnel_addr = populate_mbstf_mb_upf_tunnel_addr(tunnel_addr);
+        ogs_sockaddr_t *tunnel_addr = context_data_ptr->MBSSession->tunnelAddr();
+        mbstf_mb_upf_tunnel_addr = populate_mbstf_mb_upf_tunnel_addr(tunnel_addr);
 
-    dist_session_state = populate_mbstf_dist_session_state();
+        dist_session_state = populate_mbstf_dist_session_state();
 
 
-    std::string mbr = std::string(UserDataIngSession::maxContBitRate(context_data_ptr->info));
+        std::string mbr = UserDataIngSession::maxContBitRate(context_data_ptr->info);
 
-    dist_session.reset(new DistSession());
-    dist_session->setObjDistributionData(mbstf_obj_distribution_data);
-    dist_session->setUpTrafficFlowInfo(mbstf_up_traffic_flow_info);
-    dist_session->setMbUpfTunAddr(mbstf_mb_upf_tunnel_addr);
-    dist_session->setDistSessionState(dist_session_state);
-    dist_session->setMbr(mbr);
 
-    std::string session_id = generate_uuid();
-    dist_session->setDistSessionId(session_id);
+        create_req_data.reset(new CreateReqData());
+    
+        dist_session.reset(new DistSession());
+        dist_session->setObjDistributionData(mbstf_obj_distribution_data);
+        dist_session->setUpTrafficFlowInfo(mbstf_up_traffic_flow_info);
+        dist_session->setMbUpfTunAddr(mbstf_mb_upf_tunnel_addr);
+        dist_session->setDistSessionState(dist_session_state);
+        dist_session->setMbr(mbr);
 
-    ing_session->addToRegistry(session_id, ids_ptr);
+        std::string session_id = generate_uuid();
+	std::string sess_id(session_id);
 
-    CJson json = dist_session->toJSON();
-    std::string body = std::string(json.serialise());
+        dist_session->setDistSessionId(session_id);
 
-    ogs_sbi_request_t *req = ogs_sbi_build_request(&msg);
+        create_req_data->setDistSession(std::move(dist_session));
 
-    ogs_sbi_header_set(req->http.headers, OGS_SBI_CONTENT_TYPE, OGS_SBI_CONTENT_JSON_TYPE);
-    req->http.content = const_cast<char*>(body.c_str());
-    req->http.content_length = body.size();
+	UserDataIngSession::addToRegistry(sess_id, ids_ptr);
 
-    ogs_info("DIST SESSION: %s", body.c_str());
+        CJson json = create_req_data->toJSON(true);
+        std::string body = std::string(json.serialise());
 
-    return req;
+        ogs_sbi_request_t *req = ogs_sbi_build_request(&msg);
+	ogs_sbi_header_set(req->http.headers, OGS_SBI_CONTENT_TYPE, OGS_SBI_CONTENT_JSON_TYPE);
+        req->http.content = ogs_strdup(const_cast<char*>(body.c_str()));
+        req->http.content_length = body.size();
+        
+	return req;
+    } catch (const std::out_of_range &e) {
+        std::ostringstream err;
+        err << "MBS User Data Ingest Session [" << ids_ptr->first << "] does not exist.";
+        ogs_error("%s", err.str().c_str());
+    }
 
 }
 
-
-bool Nmb2Build::sendNmb2DistSession(void *data) {
-
-    ogs_sbi_message_t msg;
-
-    std::shared_ptr< ObjDistributionData > mbstf_obj_distribution_data = nullptr;
-    std::shared_ptr< UpTrafficFlowInfo > mbstf_up_traffic_flow_info = nullptr;
-    std::shared_ptr< TunnelAddress > mbstf_mb_upf_tunnel_addr = nullptr;
-    std::shared_ptr< DistSessionState > dist_session_state = nullptr;
-
-    std::shared_ptr< DistSession > dist_session = nullptr;
-
-    memset(&msg, 0, sizeof(msg));
-    msg.h.method = (char*)OGS_SBI_HTTP_METHOD_POST;
-    msg.h.service.name = (char*)OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION;
-    msg.h.api.version = (char *)OGS_SBI_API_V1;
-    msg.h.resource.component[0] = (char *)ogs_strdup("dist-sessions");
-
-    //UserDataIngSession::ContextData *context_data = reinterpret_cast<UserDataIngSession::ContextData*>(data);
-    //auto context_data_ptr = std::make_shared<UserDataIngSession::ContextData>(*context_data);
-
-    UserDataIngSession::UserDataIngDistSessId *ids = reinterpret_cast<UserDataIngSession::UserDataIngDistSessId*>(data);
-    auto ids_ptr = std::make_shared<UserDataIngSession::UserDataIngDistSessId>(*ids);
-
-    std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(ids_ptr->first);
-
-    std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr = UserDataIngSession::getContextData(ids_ptr);
-
-    mbstf_obj_distribution_data = populate_mbstf_obj_distribution_data(context_data_ptr->info);
-
-    std::shared_ptr< IpAddr  > dest_addr = context_data_ptr->ssm->getDestIpAddr();
-    mbstf_up_traffic_flow_info = populate_mbstf_up_traffic_flow_info(dest_addr);
-
-
-    ogs_sockaddr_t *tunnel_addr = context_data_ptr->MBSSession->tunnelAddr();
-    mbstf_mb_upf_tunnel_addr = populate_mbstf_mb_upf_tunnel_addr(tunnel_addr);
-
-    dist_session_state = populate_mbstf_dist_session_state();
-
-
-    std::string mbr = std::string(UserDataIngSession::maxContBitRate(context_data_ptr->info));
-
-    dist_session.reset(new DistSession());
-    dist_session->setObjDistributionData(mbstf_obj_distribution_data);
-    dist_session->setUpTrafficFlowInfo(mbstf_up_traffic_flow_info);
-    dist_session->setMbUpfTunAddr(mbstf_mb_upf_tunnel_addr);
-    dist_session->setDistSessionState(dist_session_state);
-    dist_session->setMbr(mbr);
-
-    std::string session_id = generate_uuid();
-    dist_session->setDistSessionId(session_id);
-
-    ing_session->addToRegistry(session_id, ids_ptr);
-
-    CJson json = dist_session->toJSON();
-    std::string body = std::string(json.serialise());
-
-    ogs_sbi_request_t *req = ogs_sbi_build_request(&msg);
-
-    ogs_sbi_header_set(req->http.headers, OGS_SBI_CONTENT_TYPE, OGS_SBI_CONTENT_JSON_TYPE);
-    req->http.content = const_cast<char*>(body.c_str());
-    req->http.content_length = body.size();
-
-    ogs_info("DIST SESSION: %s", body.c_str());
-
-    ogs_assert(context_data_ptr->mbstfInstance);
-    ogs_assert(context_data_ptr->mbstfXact);
-
-    context_data_ptr->mbstfXact->request = req;
-
-    return ogs_sbi_send_request_to_nf_instance(context_data_ptr->mbstfInstance, context_data_ptr->mbstfXact);
-
-    //return req;
-
-}
-
-bool Nmb2Build::sendNmb2DistSessionDelete(void *data) {
+ogs_sbi_request_t *Nmb2Build::buildNmb2DistSessionDelete(void *context, void *data) {
 
     ogs_sbi_message_t msg;
 
@@ -450,31 +195,28 @@ bool Nmb2Build::sendNmb2DistSessionDelete(void *data) {
     msg.h.method = (char*)OGS_SBI_HTTP_METHOD_DELETE;
     msg.h.service.name = (char*)OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION;
     msg.h.api.version = (char *)OGS_SBI_API_V1;
-    msg.h.resource.component[0] = (char *)ogs_strdup("dist-sessions");
+    msg.h.resource.component[0] = (char *)"dist-sessions";
 
     auto *session_ids = reinterpret_cast<UserDataIngSession::SessionIdContainer*>(data);
 
-    const std::string &dist_session_id = session_ids->first;
-    std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr = UserDataIngSession::getContextData(session_ids->second);
+    const std::string &dist_session_id = std::string(session_ids->first);
 
     msg.h.resource.component[1] = const_cast<char*>(dist_session_id.c_str());
 
     ogs_sbi_request_t *req = ogs_sbi_build_request(&msg);
-    context_data_ptr->mbstfXact->request = req;
-
+    
     delete session_ids;
-    return ogs_sbi_send_request_to_nf_instance(context_data_ptr->mbstfInstance, context_data_ptr->mbstfXact);
+    return req; 
 
 }
-
-
 
 std::shared_ptr< UpTrafficFlowInfo > populate_mbstf_up_traffic_flow_info(std::shared_ptr< IpAddr > dest_addr)
 {
     std::shared_ptr< UpTrafficFlowInfo > flow_info = nullptr;
-
+    
     static std::random_device rd;
-    int32_t port =static_cast<int32_t>(rd());
+    static std::uniform_int_distribution<int32_t> ud(32768, 65535);
+    int32_t port = ud(rd);
 
     flow_info.reset(new UpTrafficFlowInfo() );
     flow_info->setDestIpAddr(dest_addr);
@@ -488,8 +230,7 @@ std::shared_ptr < TunnelAddress > populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr
     ogs_sockaddr_t *sa;
     char buf[OGS_ADDRSTRLEN + 1];
 
-    std::shared_ptr< TunnelAddress > tun_addr = nullptr;
-    tun_addr.reset(new TunnelAddress());
+    std::shared_ptr< TunnelAddress > tun_addr(new TunnelAddress());
 
     for (sa = tunnel_addr; sa; sa = sa->next) {
         if(sa->ogs_sa_family == AF_INET) {
@@ -504,8 +245,6 @@ std::shared_ptr < TunnelAddress > populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr
             OGS_ADDR(sa, buf);
 
             ipv6_addr.reset(new Ipv6Addr(buf, std::string::size_type(strnlen(buf, sizeof(buf)))));
-
-            //ipv6_addr.reset(new std::string(buf, strnlen(buf, sizeof(buf))));
 
             tun_addr->setIpv6Addr(std::make_optional(ipv6_addr));
         }
@@ -563,26 +302,6 @@ static std::string generate_uuid() {
     uuid_unparse(uuid, uuid_str);
     return std::string(uuid_str);
 }
-
-
-
-
-static ogs_sbi_request_t *nmbstf_build_request(void *data)
-{
-    char *method = (char *)OGS_SBI_HTTP_METHOD_GET;
-    char *service_name = (char *)OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION;
-    char *api_version = (char *)OGS_SBI_API_V1;
-
-    Open5GSSBIMessage message;
-
-    message.method(method);
-    message.serviceName(service_name);
-    message.apiVersion(api_version);
-    message.resourceComponent(0, (char *)OGS_SBI_RESOURCE_NAME_PCF_BINDINGS);
-    Open5GSSBIRequest request(message);
-    return request.ogsSBIRequest();
-}
-
 
 MBSF_NAMESPACE_STOP
 

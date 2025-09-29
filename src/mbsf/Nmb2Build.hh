@@ -62,9 +62,8 @@ public:
     Nmb2Build &operator=(Nmb2Build &&other) = delete;
     Nmb2Build &operator=(const Nmb2Build &other) = delete;
 
-    static ogs_sbi_request_t *buildNmb2DistSession(void *data);
-    static bool sendNmb2DistSession(void *data);
-    static bool sendNmb2DistSessionDelete(void *data);
+    static ogs_sbi_request_t *buildNmb2DistSession(void *context, void *data);
+    static ogs_sbi_request_t *buildNmb2DistSessionDelete(void *context, void *data);
 
 private:
     ogs_sbi_request_t *m_request;

@@ -151,7 +151,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                 message.parseHeader(request);
             } catch (std::exception &ex) {
                 ogs_error("Failed to parse request headers");
-                break;
+                return true;
             }
 
             std::string service_name(message.serviceName());
@@ -165,12 +165,14 @@ bool UserService::processEvent(Open5GSEvent &event)
 
             if (api.value() == nmbsf_mbs_userservice_api) {
                 /******** nmbsf-mbs-us ********/
+
                 std::string api_version(message.apiVersion());
                 if (api_version != OGS_SBI_API_V1) {
                     ogs_error("Unsupported API version [%s]", api_version.c_str());
                     ogs_assert(true == NfServer::sendError(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST, 0, message, app_meta,
                                                            api, "Unsupported API version"));
-                    return true;
+
+		    return true;
                 }
 
                 if (resource0 == "mbs-user-services") {
@@ -391,7 +393,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                     ogs_error("%s", err.str().c_str());
                     ogs_assert(true == NfServer::sendError(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST, 1, message, app_meta,
                                                             api, "Bad request", err.str()));
-                    return true;
+		    return true;
                 }
             } else {
                 static const char *err = "Missing service name from URL path";

@@ -54,6 +54,9 @@ Context::~Context()
             svr.reset();
         }
     }
+    UserDataIngSession::m_xactRegistry.clear();
+    UserDataIngSession::s_distSessionIdRegistry.clear();
+
 }
 
 bool Context::parseConfig()
@@ -137,6 +140,7 @@ void Context::deleteUserService(const std::string &id)
 
 void Context::addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &session)
 {
+    std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
     std::shared_ptr<UserDataIngSession> map_session(session);
     UserDataIngSessions.insert(std::make_pair<std::string, std::shared_ptr<UserDataIngSession> >(std::string(map_session->userDataIngSessionId()), std::move(map_session)));
 }
@@ -144,6 +148,7 @@ void Context::addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &s
 
 void Context::deleteUserDataIngSession(const std::string &id)
 {
+    std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
     auto it = UserDataIngSessions.find(id);
     if (it != UserDataIngSessions.end()) {
         UserDataIngSessions.erase(it);
@@ -359,12 +364,7 @@ std::vector <std::shared_ptr<Open5GSSockAddr> > Context::MBSFUserDataIngestSessi
 
 int Context::load()
 {
-    int count = 0;
-    std::map<const mb_smf_sc_ssm_addr_t *, std::shared_ptr<MBSMFMBSSession> >::size_type size = MBSMFMBSSessions.size();
-    if (size <= static_cast<std::map<const mb_smf_sc_ssm_addr_t *, std::shared_ptr<MBSMFMBSSession> >::size_type>(std::numeric_limits<int>::max())) {
-        count = static_cast<int>(size);
-    }
-    return count;
+    return UserDataIngSession::numberOfDistributionSessions();
 }
 
 int Context::checkForAddr(ogs_socknode_t *node)

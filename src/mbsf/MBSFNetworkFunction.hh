@@ -46,6 +46,7 @@ public:
     void initialise() {};
 
     virtual OpenAPI_nf_type_e nfType() const { return OpenAPI_nf_type_MBSF; };
+    virtual std::list<std::pair<OpenAPI_nf_type_e, std::string>> subscriptions() const { return {{OpenAPI_nf_type_NULL, OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION}};};
 
 private:
     void addAddressesToNFService(ogs_sbi_nf_service_t *nf_service, ogs_sockaddr_t *addrs);

@@ -68,6 +68,48 @@ const char *Open5GSSBIResponse::getHeader(const char *header)
     return NULL;
 }
 
+const char *Open5GSSBIResponse::resourceComponent(size_t idx) const
+{
+    if (!m_response) return nullptr;
+    if (idx >= OGS_SBI_MAX_NUM_OF_RESOURCE_COMPONENT) return nullptr;
+    return m_response->h.resource.component[idx];
+}
+
+std::string Open5GSSBIResponse::headerValue(const std::string &field, const std::string &defval) const
+{
+    typedef std::string::value_type C;
+    std::basic_string_view<C, CaseInsensitiveTraits<C> > lfield(field.c_str());
+    for (auto hi = ogs_hash_first(m_response->http.headers); hi; hi = ogs_hash_next(hi)) {
+        std::basic_string_view<C, CaseInsensitiveTraits<C> > hdr_field(reinterpret_cast<const char*>(ogs_hash_this_key(hi)));
+        if (lfield.compare(hdr_field)==0) {
+            return std::string(reinterpret_cast<const char*>(ogs_hash_this_val(hi)));
+        }
+    }
+
+    return defval;
+}
+
+void Open5GSSBIResponse::headersMap(const Open5GSSBIResponse::HeadersMap &map) const
+{
+    for (auto hi = ogs_hash_first(m_response->http.headers); hi; hi = ogs_hash_next(hi)) {
+        CaseInsensitiveString hdr_field(reinterpret_cast<const char*>(ogs_hash_this_key(hi)));
+        auto it = map.find(hdr_field);
+        if (it != map.end()) it->second(it->first, reinterpret_cast<const char*>(ogs_hash_this_val(hi)));
+    }
+}
+
+void Open5GSSBIResponse::resetHeader()
+{
+    char *method = ogs_strdup(m_response->h.method);
+    ogs_sbi_header_free(&m_response->h);
+    m_response->h.method = nullptr;
+    m_response->h.method = method;
+    m_response->h.service.name = nullptr;
+    m_response->h.api.version = nullptr;
+    for (size_t i = 0; i < OGS_SBI_MAX_NUM_OF_RESOURCE_COMPONENT && m_response->h.resource.component[i]; i++) {
+        m_response->h.resource.component[i] = nullptr;
+    }
+}
 
 MBSF_NAMESPACE_STOP
 

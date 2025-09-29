@@ -23,7 +23,11 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include <functional>
+#include <map>
 #include <memory>
+#include <string>
+
 
 #include "common.hh"
 
@@ -31,6 +35,8 @@ MBSF_NAMESPACE_START
 
 class Open5GSSBIResponse {
 public:
+    using CaseInsensitiveString = std::basic_string<char, CaseInsensitiveTraits<char> >;
+    using HeadersMap = std::map<CaseInsensitiveString, std::function<void(const CaseInsensitiveString &field, const char *val)> >;	
     Open5GSSBIResponse(ogs_sbi_response_t *response, bool owner = true) :m_response(response), m_owner(owner) {};
     Open5GSSBIResponse(const Open5GSSBIResponse &other) :m_response(other.m_response), m_owner(false) {};
     Open5GSSBIResponse(Open5GSSBIResponse &&other) :m_response(other.m_response), m_owner(other.m_owner) {
@@ -39,7 +45,7 @@ public:
     Open5GSSBIResponse() = delete;
     Open5GSSBIResponse &operator=(Open5GSSBIResponse &&other) { m_response = other.m_response; m_owner = other.m_owner; other.m_owner = false; return *this; };
     Open5GSSBIResponse &operator=(const Open5GSSBIResponse &other) { m_response = other.m_response; m_owner = false; return *this; };
-    virtual ~Open5GSSBIResponse() { if (m_owner && m_response) ogs_sbi_response_free(m_response); };
+    virtual ~Open5GSSBIResponse() { if (m_owner && m_response) ogs_sbi_response_free(m_response);};
 
     ogs_sbi_response_t *ogsSBIResponse() { return m_response; };
     const ogs_sbi_response_t *ogsSBIResponse() const { return m_response; };
@@ -54,6 +60,17 @@ public:
     const char *getHeader(const char *header);
     bool headerSet(const std::string &field, const std::string &value);
     Open5GSSBIResponse &setOwner(bool owner) { m_owner = owner; return *this; };
+    void resetHeader();
+
+    std::string headerValue(const std::string &field, const std::string &defval) const;
+    void headersMap(const HeadersMap &map) const;
+
+    const char *serviceName() const { return m_response?(m_response->h.service.name):nullptr; };
+    const char *apiVersion() const { return m_response?(m_response->h.api.version):nullptr; };
+    const char *resourceComponent(size_t idx) const;
+    const char *method() const { return m_response?(m_response->h.method):nullptr; };
+    const char *uri() const { return m_response?(m_response->h.uri):nullptr; };
+    const bool owner() const { return m_owner; };
 
 private:
     ogs_sbi_response_t *m_response;

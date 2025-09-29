@@ -54,28 +54,12 @@ public:
     static const fiveg_mag_reftools::ProblemCause OVERLAPPING_MBS_SERVICE_AREA;
     static const fiveg_mag_reftools::ProblemCause UNKNOWN_MBS_SERVICE_AREA;
 
-    static inline const std::unordered_map<std::string, std::optional<ProblemCause>> propagationTable = {
-        // 400 Bad Request equivalents
-        { "INVALID_MBS_SERVICE_INFO",             MBSProblemCause::INVALID_MBS_SERVICE_INFO },
-        { "FILTER_RESTRICTIONS_NOT_RESPECTED",    ProblemCause::UNSPECIFIED_MSG_FAILURE },
-        { "ERROR_INPUT_PARAMETERS",               ProblemCause::UNSPECIFIED_MSG_FAILURE },
-
-        // 403 Forbidden equivalents
-        { "MBS_SERVICE_INFO_NOT_AUTHORIZED",      MBSProblemCause::MBS_SERVICE_INFO_NOT_AUTHORIZED },
-        { "MBS_POLICY_CONTEXT_DENIED",            std::nullopt },
-        { "MBS_SESSION_ALREADY_CREATED",          MBSProblemCause::MBS_DIST_SESSION_ALREADY_CREATED },
-        { "OVERLAPPING_MBS_SERVICE_AREA",         MBSProblemCause::OVERLAPPING_MBS_SERVICE_AREA },
-
-        // 404 Not Found equivalents
-        { "UNKNOWN_TMGI",                         std::nullopt },
-        { "UNKNOWN_MBS_SESSION",                  std::nullopt },
-        { "UNKNOWN_MBS_SERVICE_AREA",             MBSProblemCause::UNKNOWN_MBS_SERVICE_AREA }
-    };
-
     static std::optional<ProblemCause> lookup(const std::string& mbsmf_problem_cause);
 
 
 private:
+
+    static const std::unordered_map<std::string, const ProblemCause *> propagationTable;
 
 };
 

@@ -30,6 +30,25 @@ using fiveg_mag_reftools::ProblemCause;
 
 MBSF_NAMESPACE_START
 
+const std::unordered_map<std::string, const ProblemCause *> MBSProblemCause::propagationTable = {
+        // 400 Bad Request equivalents
+        { "INVALID_MBS_SERVICE_INFO",             &MBSProblemCause::INVALID_MBS_SERVICE_INFO },
+        { "FILTER_RESTRICTIONS_NOT_RESPECTED",    &ProblemCause::UNSPECIFIED_MSG_FAILURE },
+        { "ERROR_INPUT_PARAMETERS",               &ProblemCause::UNSPECIFIED_MSG_FAILURE },
+
+        // 403 Forbidden equivalents
+        { "MBS_SERVICE_INFO_NOT_AUTHORIZED",      &MBSProblemCause::MBS_SERVICE_INFO_NOT_AUTHORIZED },
+        { "MBS_POLICY_CONTEXT_DENIED",            nullptr },
+        { "MBS_SESSION_ALREADY_CREATED",          &MBSProblemCause::MBS_DIST_SESSION_ALREADY_CREATED },
+        { "OVERLAPPING_MBS_SERVICE_AREA",         &MBSProblemCause::OVERLAPPING_MBS_SERVICE_AREA },
+
+        // 404 Not Found equivalents
+        { "UNKNOWN_TMGI",                         nullptr },
+        { "UNKNOWN_MBS_SESSION",                  nullptr },
+        { "UNKNOWN_MBS_SERVICE_AREA",             &MBSProblemCause::UNKNOWN_MBS_SERVICE_AREA }
+    };
+
+
 const fiveg_mag_reftools::ProblemCause MBSProblemCause::INVALID_MBS_SERVICE_INFO(fiveg_mag_reftools::ProblemCause::registerCause("INVALID_MBS_SERVICE_INFO", OGS_SBI_HTTP_STATUS_BAD_REQUEST, "Bad Request", "The provided MBS Service Information is invalid (e.g. invalid QoS reference), incorrect or insufficient to perform MBS policy authorization."));
 
 const fiveg_mag_reftools::ProblemCause MBSProblemCause::MBS_SERVICE_AREA_NOT_SUPPORTED(fiveg_mag_reftools::ProblemCause::registerCause("MBS_SERVICE_AREA_NOT_SUPPORTED", OGS_SBI_HTTP_STATUS_FORBIDDEN, "Forbidden", "The requested MBS Service Area is not supported by the 3GPP Core Network."));
@@ -46,7 +65,7 @@ const fiveg_mag_reftools::ProblemCause MBSProblemCause::UNKNOWN_MBS_SERVICE_AREA
 std::optional<ProblemCause> MBSProblemCause::lookup(const std::string& mbsmf_problem_cause) {
   auto it = propagationTable.find(mbsmf_problem_cause);
   if (it == propagationTable.end()) return std::nullopt;
-  return it->second;
+  return (it->second)?std::optional<ProblemCause>(*it->second):std::optional<ProblemCause>();
 }
 
 MBSF_NAMESPACE_STOP

@@ -135,6 +135,10 @@ void Open5GSNetworkFunction::initialise() {
         ogs_fatal("Unable to parse local configuration");
     }
     mb_smf_sc_parse_config(mb_smf_client_sect);
+    auto subs = subscriptions();
+    for( auto &[nf_type, service_name] : subs) {
+        ogs_sbi_subscription_spec_add(nf_type, service_name.empty()?nullptr:service_name.c_str());
+    }
 };
 
 static void timer_function(void *real_fn)
@@ -186,6 +190,7 @@ bool Open5GSNetworkFunction::configureLoggingDomain()
 
 bool Open5GSNetworkFunction::sbiParseConfig(const char *app_section, const char *nrf_section, const char *scp_section)
 {
+    if (ogs_sbi_self()->tls.server.scheme == OpenAPI_uri_scheme_NULL) ogs_sbi_self()->tls.server.scheme = OpenAPI_uri_scheme_http;	
     return ogs_sbi_context_parse_config(app_section, nrf_section, scp_section) == OGS_OK;
 }
 

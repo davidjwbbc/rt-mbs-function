@@ -36,6 +36,7 @@
 #include "Open5GSSBIResponse.hh"
 #include "UserService.hh"
 #include "UserDataIngSession.hh"
+#include "openapi/model/CreateRspData.h"
 #include "openapi/model/DistSession.h"
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/IpAddr.h"
@@ -55,6 +56,7 @@
 #include "Nmb2Handler.hh"
 
 using fiveg_mag_reftools::CJson;
+using reftools::mbsf::CreateRspData;
 using reftools::mbsf::DistSession;
 using reftools::mbsf::DistSessionState;
 using reftools::mbsf::MBSUserDataIngSession;
@@ -74,84 +76,100 @@ MBSF_NAMESPACE_START
 static bool handle_mbstf_dist_session_response(ogs_sbi_xact_t *xact, Open5GSSBIResponse &response);
 static void handle_mbstf_dist_session_delete(std::string &dist_session_id);
 static void send_error(ogs_sbi_xact_t *xact);
+static void remove_xact(ogs_sbi_xact_t *xact);
+static bool valid_content_type(Open5GSSBIMessage &message);
 
 bool Nmb2Handler::processEvent(Open5GSEvent &event)
 {
-
     switch (event.id()) {
     case OGS_EVENT_SBI_CLIENT:
-        {
-            ogs_assert(event.ogsEvent());
+    {
+        ogs_assert(event.ogsEvent());
+	
+	Open5GSSBIResponse response(event.sbiResponse());
+        Open5GSSBIMessage message;
 
-            Open5GSSBIResponse response(event.sbiResponse(true));
-            Open5GSSBIMessage message;
-            /*
-            try {
-                message.parseHeader(response);
-            } catch (std::exception &ex) {
-                ogs_error("ogs_sbi_parse_header() failed decoding client response");
-                break;
-            }
-            */
-            try {
-                message.parseResponse(response);
-            } catch (std::exception &ex) {
-                ogs_error("ogs_sbi_parse_response() failed decoding client response");
-                return true;
-            }
+	try {
+	    message.parseHeader(response);
+	} catch (std::exception &ex) {
+	    ogs_error("ogs_sbi_parse_response() failed decoding client response");
+	    response.setOwner(true);
+	    return true;
+	}
 
-            message.resStatus(response.status());
+        message.resStatus(response.status());
 
-            std::string service_name(message.serviceName());
-            if (service_name == OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION) {
-                std::string resource(message.resourceComponent(0));
-                if (resource == "dist-sessions") {
-                    ogs_sbi_xact_t *sbi_xact = NULL;
-                    ogs_pool_id_t sbi_xact_id = 0;
+        std::string service_name(message.serviceName());
+        if (service_name == OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION) {
+	    std::string resource(message.resourceComponent(0));
+	    if (resource == "dist-sessions") {
+	        response.setOwner(true);
 
-                    sbi_xact_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_xact_t*>(event.sbiData()));
-                    ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID && sbi_xact_id <= OGS_MAX_POOL_ID);
+		ogs_sbi_xact_t *sbi_xact = NULL;
+	        ogs_pool_id_t sbi_xact_id = 0;
 
-                    sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
-                    ogs_assert(sbi_xact);
-                    if (!sbi_xact) {
-                          /* CLIENT_WAIT timer could remove SBI transaction
-                           * before receiving SBI message */
-                          ogs_error("SBI transaction has already been removed");
-                          return true;
-                    }
-                    std::string method(message.method());
-                    if (method == OGS_SBI_HTTP_METHOD_POST) {
-                        if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK)
-                        {
-                            handle_mbstf_dist_session_response(sbi_xact, response);
-                        } else {
-                            ogs_error("HTTP response error [%d]", message.resStatus());
+	        sbi_xact_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_xact_t*>(event.sbiData()));
+		ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID && sbi_xact_id <= OGS_MAX_POOL_ID);
+
+	        sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
+	        ogs_assert(sbi_xact);
+	        if (!sbi_xact) {
+		    /* CLIENT_WAIT timer could remove SBI transaction
+		     * before receiving SBI message */
+		    ogs_error("SBI transaction has already been removed");
+		    return true;
+	        }
+		std::string method(message.method());
+	        if (method == OGS_SBI_HTTP_METHOD_POST) {
+		    if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK || message.resStatus() == OGS_SBI_HTTP_STATUS_CREATED)
+		    {
+			if( response.contentLength() && valid_content_type(message))
+			{
+			   
+			    handle_mbstf_dist_session_response(sbi_xact, response);
+			} else {
+                            ogs_error("Received invalid content-type from MBSTF");
                             UserDataIngSession::deleteMBSTFSession(sbi_xact);
                             send_error(sbi_xact);
-                            ogs_sbi_xact_remove(sbi_xact);
-                            return true;
-                        }
+                         }
 
-                      } else if (method == OGS_SBI_HTTP_METHOD_DELETE) {
-                        if (message.resStatus() == OGS_SBI_HTTP_STATUS_NO_CONTENT)
-                        {
-                            std::string resource_id(message.resourceComponent(1));
-                            if(!resource_id.empty()) {
-                                 handle_mbstf_dist_session_delete(resource_id);
-                            }
+		    } else {
+		        ogs_error("HTTP response error [%d]", message.resStatus());
+			UserDataIngSession::deleteMBSTFSession(sbi_xact);
+		        send_error(sbi_xact);
 
-                        }
-                      } else {
-                          ogs_error("Invalid HTTP method [%s]", method.c_str());
-                          ogs_sbi_xact_remove(sbi_xact);
-                          return true;
-                      }
-                }
-                return false;
-            }
-        }
-        return false;
+		    }
+
+	        } else if (method == OGS_SBI_HTTP_METHOD_DELETE) {
+		    if (message.resStatus() == OGS_SBI_HTTP_STATUS_NO_CONTENT)
+		    {
+		        std::string resource_id(message.resourceComponent(1));
+		        if(!resource_id.empty()) {
+			    if(sbi_xact) {	
+                                remove_xact(sbi_xact);
+				sbi_xact = nullptr;
+			    }
+			    handle_mbstf_dist_session_delete(resource_id);
+		        }
+
+		    }
+
+
+	        } else {
+		    ogs_error("Invalid HTTP method [%s]", method.c_str());
+		}
+		if(sbi_xact) {
+		    remove_xact(sbi_xact);
+		    sbi_xact = nullptr;
+		}
+		return true;
+	    }
+	    return false;
+	}
+	
+        if(!response.owner()) response.resetHeader();
+    }
+    return false;
     default:
         return false;
     }
@@ -178,115 +196,64 @@ static bool handle_mbstf_dist_session_response(ogs_sbi_xact_t *xact, Open5GSSBIR
     requester_nf_type = xact->requester_nf_type;
     ogs_assert(requester_nf_type);
 
-    Open5GSSBIMessage response_message;
-
-
+    std::shared_ptr< CreateRspData > create_rsp_data = nullptr;
     std::shared_ptr< DistSession > dist_session = nullptr;
-    std::shared_ptr< UserDataIngSession::ContextData > context_data = nullptr;
-    std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> ids = nullptr;
 
-    {
-        std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
-        auto it = UserDataIngSession::m_xactRegistry.find(xact);
-        if (it != UserDataIngSession::m_xactRegistry.end()) {
-            ids = it->second;
-        }
-    }
-
-    context_data = UserDataIngSession::getContextData(ids);
-
-    response_message.parseResponse(response);
-
-
-    const std::string content_type = std::string(response_message.contentType());
-
-    Open5GSSBIRequest request(context_data->event->sbiRequest());
-    Open5GSSBIStream stream(reinterpret_cast<ogs_sbi_stream_t*>(context_data->event->sbiData()));
-    Open5GSSBIMessage message;
-    message.parseHeader(request);
-
-    if(content_type != "application/json") {
-        ogs_error("Received invalid content-type from MBSTF");
-
-        UserDataIngSession::deleteMBSTFSession(xact);
-
-        send_error(xact);
-
-        return true;
-    }
-
-    CJson dist_session_from_mbstf(CJson::Null);
+    CJson create_rsp_data_from_mbstf(CJson::Null);
     try {
-        dist_session_from_mbstf = CJson::parse(response.content());
+        create_rsp_data_from_mbstf = CJson::parse(response.content());
     } catch (std::exception &ex) {
-
-        ogs_error("Unable to parse response JSON from MBSTF");
-
         UserDataIngSession::deleteMBSTFSession(xact);
-
-        send_error(xact);
-
-        return true;
-    }
-    {
-        std::string txt(dist_session_from_mbstf.serialise());
-        ogs_debug("DistSession response from MBSTF Parsed JSON: %s", txt.c_str());
+	send_error(xact);
+	return true;
     }
     try {
-               dist_session.reset(new DistSession(dist_session_from_mbstf, false));
+        create_rsp_data.reset(new CreateRspData(create_rsp_data_from_mbstf, false));
 
     } catch (std::exception &err) {
-        ogs_error("Error while populating the DistSession response from MBSTF: %s", err.what());
-
         UserDataIngSession::deleteMBSTFSession(xact);
-
-        char *error = ogs_msprintf("%s", err.what());
-        ogs_error("%s", error);
-
-        send_error(xact);
-
-        ogs_free(error);
-        return true;
+	char *error = ogs_msprintf("%s", err.what());
+	ogs_error("%s", error);
+	send_error(xact);
+	ogs_free(error);
+	return true;
     }
 
+    dist_session = create_rsp_data->getDistSession();
     ogs_expect(true == UserDataIngSession::processDistSession(dist_session));
     return true;
+}
+
+static bool valid_content_type(Open5GSSBIMessage &message) {
+    if(std::string(message.contentType()) == "application/json") {
+        return true;
+    }
+    return false;
+
 }
 
 static void send_error(ogs_sbi_xact_t *xact)
 {
 
-    std::shared_ptr< UserDataIngSession::ContextData > context_data = nullptr;
-    std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> ids = nullptr;
-
-    {
-        std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
-        auto it = UserDataIngSession::m_xactRegistry.find(xact);
-        if (it != UserDataIngSession::m_xactRegistry.end()) {
-            ids = it->second;
-        }
-    }
-
-    context_data = UserDataIngSession::getContextData(ids);
-
-    Open5GSSBIRequest request(context_data->event->sbiRequest());
-    Open5GSSBIStream stream(reinterpret_cast<ogs_sbi_stream_t*>(context_data->event->sbiData()));
-    Open5GSSBIMessage message;
-    message.parseHeader(request);
-
-    ogs_assert(true == NfServer::sendError(stream, ProblemCause::INBOUND_SERVER_ERROR, 1, message,
-                                                            App::self().mbsfAppMetadata(), std::nullopt, "Failed to create MBS Distribution Session in MBSTF"));
-
+    Open5GSSBIStream stream(xact->assoc_stream_id);
+    ogs_assert(true == Open5GSSBIServer::sendError(stream, std::nullopt, ProblemCause::INBOUND_SERVER_ERROR,
+                                                                      "Failed to create MBS Distribution Session in MBSTF"));
 }
+
+static void remove_xact(ogs_sbi_xact_t *xact)
+{
+    if(xact) {
+        UserDataIngSession::removeXact(xact);
+        xact = nullptr;
+    }
+}
+
 
 static void handle_mbstf_dist_session_delete(std::string &dist_session_id) {
 
-    std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
-    UserDataIngSession::s_distSessionIdRegistry.erase(dist_session_id);
-
+    UserDataIngSession::setMBSTFDistSessionDeletedFlag(dist_session_id);
 
 }
-
 
 MBSF_NAMESPACE_STOP
 

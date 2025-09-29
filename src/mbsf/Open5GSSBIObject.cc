@@ -22,6 +22,8 @@
 
 #include <memory>
 #include <stdexcept>
+#include <thread>
+#include <chrono>
 
 #include "common.hh"
 #include "App.hh"
@@ -36,7 +38,7 @@
 MBSF_NAMESPACE_START
 
 Open5GSSBIObject::Open5GSSBIObject()
-    :m_ogsObject(new ogs_sbi_object_t())
+    :m_ogsObject(new ogs_sbi_object_t{})
 {
      ogs_list_init(&m_ogsObject->xact_list);
 }
@@ -49,64 +51,55 @@ Open5GSSBIObject::Open5GSSBIObject(ogs_sbi_object_t *object)
 
 Open5GSSBIObject::~Open5GSSBIObject()
 {
+    ogs_sbi_xact_remove_all(m_ogsObject);
+    ogs_sbi_object_free(m_ogsObject);
     delete m_ogsObject;
+
 }
 
-int Open5GSSBIObject::discoverAndSend(ogs_sbi_service_type_e service_type, ogs_sbi_discovery_option_t *discovery_option, ogs_sbi_build_f build, void *context, void *data)
+ogs_sbi_xact_t *Open5GSSBIObject::discoverAndSend(ogs_pool_id_t stream_id, ogs_sbi_service_type_e service_type, ogs_sbi_discovery_option_t *discovery_option, ogs_sbi_build_f build, void *context, void *data)
 {
-    ogs_sbi_xact_t *xact;
+    ogs_sbi_xact_t *xact = nullptr;
     int rv;
     ogs_pool_id_t xact_id = 0;
 
+    if(!m_ogsObject) {
+        m_ogsObject = new ogs_sbi_object_t{};
+    }
+
     xact = ogs_sbi_xact_add(xact_id, m_ogsObject, service_type, discovery_option, build, (void *)context, (void *)data);
+   
     if (!xact) {
         ogs_error("discoverAndSend() failed as adding transaction failed");
-        return OGS_ERROR;
+        return nullptr;
     }
+
+    xact->assoc_stream_id = stream_id;
 
     rv = ogs_sbi_discover_and_send(xact);
     if (rv != OGS_OK) {
         ogs_error("discoverAndSend() failed");
         ogs_sbi_xact_remove(xact);
     }
-    return rv;
+    return xact;
 }
 
-/*
-int Open5GSSBIObject::discoverOnly(ogs_sbi_service_type_e service_type, ogs_sbi_discovery_option_t *discovery_option, const std::any &data)
-{
-    ogs_sbi_xact_t *xact;
-    int rv;
-    ogs_pool_id_t xact_id = 1;
-
-    xact = ogs_sbi_xact_add(xact_id, m_ogsObject, service_type, discovery_option, nullptr, nullptr, nullptr);
-    if (!xact) {
-        ogs_error("discoverOnly() failed as adding transaction failed");
-        return OGS_ERROR;
-    }
-
-    addData(xact_id, data);
-
-    rv = ogs_sbi_discover_only(xact);
-    if (rv != OGS_OK) {
-        ogs_error("discoverOnly() failed");
-        ogs_sbi_xact_remove(xact);
-    }
-    return rv;
-}
-*/
-
-ogs_sbi_xact_t *Open5GSSBIObject::discoverOnly(ogs_sbi_service_type_e service_type, ogs_sbi_discovery_option_t *discovery_option)
+ogs_sbi_xact_t *Open5GSSBIObject::discoverOnly(ogs_pool_id_t stream_id, ogs_sbi_service_type_e service_type, ogs_sbi_discovery_option_t *discovery_option)
 {
     ogs_sbi_xact_t *xact;
     int rv;
     ogs_pool_id_t xact_id = 0;
+
+    if(!m_ogsObject) {
+        m_ogsObject = new ogs_sbi_object_t{};
+    }
 
     xact = ogs_sbi_xact_add(xact_id, m_ogsObject, service_type, discovery_option, nullptr, nullptr, nullptr);
     if (!xact) {
         ogs_error("discoverOnly() failed as adding transaction failed");
         return nullptr;
     }
+    xact->assoc_stream_id = stream_id;
 
     rv = ogs_sbi_discover_only(xact);
     if (rv != OGS_OK) {
@@ -117,6 +110,10 @@ ogs_sbi_xact_t *Open5GSSBIObject::discoverOnly(ogs_sbi_service_type_e service_ty
     return xact;
 }
 
+void Open5GSSBIObject::setNFInstance(ogs_sbi_service_type_e service_type, ogs_sbi_nf_instance_t *nf_instance)
+{
+    OGS_SBI_SETUP_NF_INSTANCE(m_ogsObject->service_type_array[service_type], nf_instance);
+}
 
 void Open5GSSBIObject::addData(ogs_pool_id_t xact_id, Data data) {
      std::lock_guard<std::recursive_mutex> lock(m_mutex);
@@ -126,7 +123,6 @@ void Open5GSSBIObject::addData(ogs_pool_id_t xact_id, Data data) {
 
 const Open5GSSBIObject::Data& Open5GSSBIObject::getData(const ogs_pool_id_t xact_id) const
 {
-    ogs_info("XACT GETDATA: %d", xact_id);
     return  m_xactTable.at(xact_id);
 }
 
@@ -134,42 +130,6 @@ Open5GSSBIObject::Data& Open5GSSBIObject::getData(const ogs_pool_id_t xact_id)
 {
     return  m_xactTable.at(xact_id);
 }
-
-
-
-const ogs_sbi_nf_instance_t *Open5GSSBIObject::nfInstanceByService(size_t idx) const
-{
-    if (!m_ogsObject) return nullptr;
-
-    if (idx>= OGS_SBI_MAX_NUM_OF_SERVICE_TYPE) return nullptr;
-    return m_ogsObject->service_type_array[idx].nf_instance;
-}
-
-const ogs_sbi_nf_instance_t *Open5GSSBIObject::nfInstance(size_t idx) const
-{
-    if (!m_ogsObject) return nullptr;
-
-    if (idx >= OGS_SBI_MAX_NUM_OF_NF_TYPE) return nullptr;
-    return m_ogsObject->nf_type_array[idx].nf_instance;
-}
-
-ogs_sbi_xact_t *Open5GSSBIObject::xactExists(ogs_sbi_xact_t *xact)
-{
-    ogs_sbi_xact_t *obj_xact = nullptr;
-    void *node = NULL;
-
-    if(!xact) return nullptr;
-
-    ogs_list_for_each(&m_ogsObject->xact_list, node) {
-        obj_xact = reinterpret_cast<ogs_sbi_xact_t *>(node);
-        if(obj_xact == xact) {
-            ogs_info("XACT MATCH");
-            return obj_xact;
-        }
-    }
-    return nullptr;
-}
-
 
 MBSF_NAMESPACE_STOP
 

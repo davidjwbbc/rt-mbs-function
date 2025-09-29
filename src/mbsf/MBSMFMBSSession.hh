@@ -64,13 +64,15 @@ public:
 
     LocalEvent localEvent;
 
-    static bool processEvent(ogs_event_t *event);
+    static bool processEvent(Open5GSEvent &event);
 
     MBSMFMBSSession &setSession(mb_smf_sc_mbs_session_t *session);
     MBSMFMBSSession &setServiceType(mb_smf_sc_mbs_service_type_e service_type);
     MBSMFMBSSession &setTunnelRequest(bool request_udp_tunnel);
     MBSMFMBSSession &setCreatedCallback(void *callback_data);
     MBSMFMBSSession &setTmgiRequest(bool req_tmgi);
+    
+    void deleteSession();
 
     void pushChanges();
     static void mbsSessionCreatedCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data);

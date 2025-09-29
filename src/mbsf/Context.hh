@@ -87,6 +87,7 @@ public:
 
     std::optional<std::string> allowedMulticastRange;
 
+
 private:
     void parseCacheControl(Open5GSYamlIter &iter);
     void parseConfiguration(std::string &pc_key, Open5GSYamlIter &iter);
