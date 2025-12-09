@@ -34,6 +34,7 @@
 #include "AlwaysActive.hh"
 #include "ActivePeriods.hh"
 #include "ActivePeriodsRepRule.hh"
+#include "DistributionSessionInfo.hh"
 
 
 namespace fiveg_mag_reftools {
@@ -93,6 +94,7 @@ public:
     struct ContextData {
         std::string ingSessionId;
         std::string distSessionInfoKey;
+        std::shared_ptr<DistributionSessionInfo> distributionSessionInfo;
         std::shared_ptr<MBSDistributionSessionInfo> info;
         std::shared_ptr<Ssm> ssm;
 	std::shared_ptr<Open5GSSBIRequest> request;
@@ -165,7 +167,9 @@ public:
     UserDataIngSession &createCurrentStateTimer();
     bool startTimer();
     std::shared_ptr< DistSessionState > getDistSessionState();
-    DistSessionState getNextDistSessionState();
+    const DistSessionState getNextDistSessionState() const;
+    const DistSessionState getdistSessState() const;
+
 
     void processUserDataIngSessionUpdate(ogs_pool_id_t stream_id, std::shared_ptr<Open5GSSBIRequest> &request, CJson &json);
     void processDistributionSessionInfo(ogs_pool_id_t stream_id, std::shared_ptr<Open5GSSBIRequest> &request);
@@ -240,6 +244,7 @@ public:
     static void handlePatchUpdateResponse(ogs_sbi_xact_t *xact);
     static void rollbackMBSTFDistSessionState(ogs_sbi_xact_t *xact);
 
+    static void sendMbsmfActivityStatus(std::shared_ptr< UserDataIngSession::UserDataIngDistSessId > user_data_ing_dist_sess_ids);
 
     static void addToRegistry(ogs_sbi_xact_t* xact, std::shared_ptr< UserDataIngDistSessId > &ids);
     static void removeFromRegistry(ogs_sbi_xact_t* xact);

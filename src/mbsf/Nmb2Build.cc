@@ -113,7 +113,7 @@ static std::shared_ptr< TunnelAddress > populate_mbstf_mb_upf_tunnel_addr(ogs_so
 static std::shared_ptr< UpTrafficFlowInfo > populate_mbstf_up_traffic_flow_info(std::shared_ptr< IpAddr > dest_addr);
 static std::shared_ptr< DistSessionState > populate_mbstf_dist_session_state(std::shared_ptr<UserDataIngSession> ing_session, std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr);
 static std::optional<std::shared_ptr< PktDistributionData > >  populate_mbstf_pkt_distribution_data(std::shared_ptr<MBSDistributionSessionInfo> mbs_dist_session_info);
-static std::string build_nmb2_dist_session(void *context);
+static /*std::string*/ CJson build_nmb2_dist_session(void *context);
 static std::shared_ptr< DistSession > build_nmb2_create_dist_session(std::shared_ptr<UserDataIngSession> ing_session, std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr);
 static std::string generate_uuid();
 
@@ -204,7 +204,7 @@ ogs_sbi_request_t *Nmb2Build::buildNmb2DistSessionPatch(void *context, void *dat
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
     char *state = nullptr;
-    std::string patch_val;
+    /*std::string*/ CJson patch_val(CJson::Null);
 
     OpenAPI_list_t *patch_item_list = NULL;
     OpenAPI_patch_item_t status_item;
@@ -226,25 +226,32 @@ ogs_sbi_request_t *Nmb2Build::buildNmb2DistSessionPatch(void *context, void *dat
 
     std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(session_ids->second->first);
     std::shared_ptr< UserDataIngSession::ContextData > context_data_ptr(ing_session->getDistributionSessionInfoData(session_ids->second->second));
+    if(context_data_ptr->needsUpdate) {
+        status_item.path = (char *)"/distSession";
+	std::shared_ptr< DistSession > dist_session = build_nmb2_create_dist_session(ing_session, context_data_ptr);
 
-    if(context_data_ptr->stateUpdate) {
-        patch_val = ing_session->distSessionState();
+        std::string sess_id(context_data_ptr->mbstfDistSessionId);
+
+        dist_session->setDistSessionId(sess_id);
+	UserDataIngSession::addToRegistry(sess_id, session_ids->second);
+
+        patch_val = dist_session->toJSON(true) /*build_nmb2_dist_session(data)*/;
+    } else if(context_data_ptr->stateUpdate) {
+        //patch_val = ing_session->distSessionState();
+	patch_val = ing_session->getdistSessState().toJSON();
 	ing_session->currentDistSessionState(ing_session->distSessionState());
         status_item.path = (char *)"/distSession/distSessionState";
-    } else if(context_data_ptr->needsUpdate) {
-
-        status_item.path = (char *)"/distSession";
-        patch_val = build_nmb2_dist_session(data);
     }
-
+    
     patch_item_list = OpenAPI_list_create();
     if (!patch_item_list) {
         ogs_error("No patch_item_list");
     }
 
     status_item.op = OpenAPI_patch_operation_replace;
-    //status_item.path = (char *)"/distSession/distSessionState";
-    status_item.value = OpenAPI_any_type_create_string(patch_val.c_str());
+    cJSON *value = patch_val.exportCJSON();
+
+    if(value)status_item.value = OpenAPI_any_type_create(value);
     if (!status_item.value) {
         ogs_error("No status item.value");
     }
@@ -369,14 +376,14 @@ static std::optional<std::shared_ptr< PktDistributionData > >  populate_mbstf_pk
 
 }
 
-static std::string build_nmb2_dist_session(void *data)
+static /*std::string*/ CJson build_nmb2_dist_session(void *data)
 {
     std::shared_ptr< ObjDistributionData > mbstf_obj_distribution_data = nullptr;
     std::optional<std::shared_ptr< PktDistributionData > > mbstf_pkt_distribution_data = std::nullopt;
     std::shared_ptr< UpTrafficFlowInfo > mbstf_up_traffic_flow_info = nullptr;
     std::shared_ptr< TunnelAddress > mbstf_mb_upf_tunnel_addr = nullptr;
     std::shared_ptr< DistSessionState > dist_session_state = nullptr;
-
+    CJson json(CJson::Null);
     std::shared_ptr< DistSession > dist_session = nullptr;
 
     std::shared_ptr< CreateReqData > create_req_data = nullptr;
@@ -394,21 +401,21 @@ static std::string build_nmb2_dist_session(void *data)
 
         std::string sess_id(context_data_ptr->mbstfDistSessionId);
 
-        dist_session->setDistSessionId(std::string(context_data_ptr->mbstfDistSessionId));
+        dist_session->setDistSessionId(sess_id);
 
         create_req_data->setDistSession(std::move(dist_session));
 
 	UserDataIngSession::addToRegistry(sess_id, session_ids->second);
 
-        CJson json = create_req_data->toJSON(true);
-        return std::string(json.serialise());
+        /*CJson json =*/ json = create_req_data->toJSON(true);
+        //return std::string(json.serialise());
 
     } catch (const std::out_of_range &e) {
         std::ostringstream err;
         err << "MBS User Data Ingest Session [" << session_ids->second->first << "] does not exist.";
         ogs_error("%s", err.str().c_str());
     }
-    return std::string();
+    return json;
 
 
 }

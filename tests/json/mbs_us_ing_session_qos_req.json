@@ -1,0 +1,42 @@
+{
+  "mbsUserServId": "8b4996d8-d431-41f0-a2fa-ed911b9a0cf8",
+  "mbsDisSessInfos": {
+    "AP_MBS_SESSION_1": {
+      "mbsSessionId": {
+        "ssm": {
+          "sourceIpAddr": {
+            "ipv4Addr": "127.0.0.5"
+          },
+          "destIpAddr": {
+            "ipv4Addr": "232.10.0.5"
+          }
+        }
+      },
+      "maxContBitRate": "10 Mbps",
+      "distrMethod": "OBJECT",
+      "objDistrInfo": {
+        "operatingMode": "STREAMING",
+        "objAcqMethod": "PULL",
+        "objIngUri": "http://media-origin-server:8080/",
+        "objAcqIds": ["pc_hd_abr_v2_http.mpd"],
+        "objDistUri": "http://localhost:8081/"
+      },
+      "mbsServInfo": {
+        "mbsMediaComps": {
+            "comp-1": {
+                "mbsMedCompNum": 1,
+                "mbsQoSReq": {
+                    "5qi": 9,
+                    "guarBitRate": "50 Mbps",
+                    "maxBitRate": "70 Mbps",
+                    "averWindow": 300
+                }
+            }
+        },
+        "afAppId": "example.af.app.id",
+        "mbsSessionAmbr": "20000 bps"
+      }
+    }
+  }
+}
+

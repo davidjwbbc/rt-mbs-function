@@ -50,20 +50,44 @@ libmbsf_dist_sources = files('''
     ActivePeriodsBase.hh
     ActivePeriodsRepRule.cc
     ActivePeriodsRepRule.hh
+    AllocationRetentionPriority.cc
+    AllocationRetentionPriority.hh
+    AssociatedSessId.cc
+    AssociatedSessId.hh
     common.cc
     common.hh
     CaseInsensitiveTraits.hh
+    CivicAddr.cc
+    CivicAddr.hh
     Context.cc
     Context.hh
+    DistributionSessionInfo.cc
+    DistributionSessionInfo.hh
     EventHandler.hh
+    ExternalServiceArea.cc
+    ExternalServiceArea.hh
+    GeographicalArea.cc
+    GeographicalArea.hh
+    GeographicalCoordinate.cc
+    GeographicalCoordinate.hh
     hash.hh
     MBSFEventHandler.cc
     MBSFEventHandler.hh
     MBSFNetworkFunction.hh
     MBSMFMBSSession.cc
     MBSMFMBSSession.hh
+    MBSNcgi.cc
+    MBSNcgi.hh
+    MBSNcgiTai.cc
+    MBSNcgiTai.hh
+    MBSPlmnId.cc
+    MBSPlmnId.hh
     MBSProblemCause.cc
     MBSProblemCause.hh
+    MediaComp.cc
+    MediaComp.hh
+    MediaInfo.cc
+    MediaInfo.hh
     NfServer.cc
     NfServer.hh
     Nmb2Build.cc
@@ -92,7 +116,15 @@ libmbsf_dist_sources = files('''
     Open5GSYamlDocument.hh
     Open5GSYamlIter.cc
     Open5GSYamlIter.hh
+    QoSReq.cc
+    QoSReq.hh
+    ServiceArea.cc
+    ServiceArea.hh
+    ServiceInfo.cc
+    ServiceInfo.hh
     TimerFunc.hh
+    TrackingAreaIdentity.cc
+    TrackingAreaIdentity.hh
     UserDataIngSession.cc
     UserDataIngSession.hh
     UserService.cc

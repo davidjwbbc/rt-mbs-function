@@ -28,6 +28,10 @@
 #include "MBSProblemCause.hh"
 #include "NfServer.hh"
 #include "Nmb2Build.hh"
+#include "ServiceInfo.hh"
+#include "ExternalServiceArea.hh"
+#include "ServiceArea.hh"
+#include "AssociatedSessId.hh"
 #include "UserDataIngSession.hh"
 
 #include "MBSMFMBSSession.hh"
@@ -69,6 +73,52 @@ MBSMFMBSSession &MBSMFMBSSession::setSession(mb_smf_sc_mbs_session_t *session)
     }
     return *this;
 };
+
+MBSMFMBSSession &MBSMFMBSSession::setServiceInfo(std::shared_ptr< MbsServiceInfo > mbs_service_info)
+{
+    ServiceInfo service_info(mbs_service_info);
+    m_session->mbs_service_info = service_info.populateServiceInfo(); 
+    ogs_assert(m_session->mbs_service_info);
+    return *this;
+
+}
+
+MBSMFMBSSession &MBSMFMBSSession::setServiceArea(std::shared_ptr< MbsServiceArea > mbs_service_area)
+{
+    ServiceArea service_area(mbs_service_area);
+    m_session->mbs_service_area = service_area.populateServiceArea();
+    return *this;
+}
+
+MBSMFMBSSession &MBSMFMBSSession::setExternalServiceArea(std::shared_ptr< ExternalMbsServiceArea > ext_mbs_service_area)
+{
+    ExternalServiceArea external_service_area(ext_mbs_service_area);
+    m_session->ext_mbs_service_area = external_service_area.populateExternalServiceArea();
+    return *this;
+}
+
+
+MBSMFMBSSession &MBSMFMBSSession::setFsaId(const std::string &mbs_fsa_id) {
+    mb_smf_sc_mbs_fsa_id_t *fsa_id = mb_smf_sc_mbs_fsa_id_new();
+    unsigned long id = std::stoul(mbs_fsa_id);
+    fsa_id->id = static_cast<uint32_t>(id);
+    ogs_list_init(&m_session->mbs_fsa_ids);
+    ogs_list_add(&m_session->mbs_fsa_ids, fsa_id);
+    return *this;
+}
+
+MBSMFMBSSession &MBSMFMBSSession::setAssociatedSessionId(std::shared_ptr< AssociatedSessionId > associated_session_id)
+{
+    AssociatedSessId id(associated_session_id);
+    m_session->associated_session_id = id.populateAssociatedSessionId();
+    return *this;
+}
+
+MBSMFMBSSession &MBSMFMBSSession::setLocationDependent(bool location_dependent)
+{
+    m_session->location_dependent = location_dependent;
+    return *this;
+}
 
 bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
 {
@@ -189,13 +239,16 @@ const char *MBSMFMBSSession::mbsfLocalGetName(LocalEvent *mbsf_event)
 
 MBSMFMBSSession &MBSMFMBSSession::setServiceType(mb_smf_sc_mbs_service_type_e service_type)
 {
-    mb_smf_sc_mbs_session_set_service_type(m_session, service_type);
+    //mb_smf_sc_mbs_session_set_service_type(m_session, service_type);
+    m_session->service_type = service_type;
     return *this;
 }
 
 MBSMFMBSSession &MBSMFMBSSession::setTunnelRequest(bool request_udp_tunnel)
 {
-    mb_smf_sc_mbs_session_set_tunnel_request(m_session, request_udp_tunnel);
+    
+    //mb_smf_sc_mbs_session_set_tunnel_request(m_session, request_udp_tunnel);
+    m_session->tunnel_req = request_udp_tunnel;
     return *this;
 }
 
@@ -215,18 +268,32 @@ void MBSMFMBSSession::mbsSessionCreatedCallback(mb_smf_sc_mbs_session_t *session
 
 MBSMFMBSSession &MBSMFMBSSession::setCreatedCallback(void *callback_data)
 {
-    m_session->create_result_cb = mbsSessionCreatedCallback;
-    m_session->create_result_cb_data = (void*)callback_data;
+    mb_smf_sc_mbs_session_set_callback(m_session, mbsSessionCreatedCallback, callback_data);
+    //m_session->create_result_cb = mbsSessionCreatedCallback;
+    //m_session->create_result_cb_data = (void*)callback_data;
 
     return *this;
 }
 
-MBSMFMBSSession &MBSMFMBSSession::setTmgiRequest(bool req_tmgi)
+MBSMFMBSSession &MBSMFMBSSession::setTmgiRequest(bool tmgi_req)
 {
-    mb_smf_sc_mbs_session_set_tmgi_request(m_session, req_tmgi);
+    //mb_smf_sc_mbs_session_set_tmgi_request(m_session, req_tmgi);
+    m_session->tmgi_req = tmgi_req;
     return *this;
 }
 
+ MBSMFMBSSession &MBSMFMBSSession::setActivityStatus(mb_smf_sc_activity_status_e activity_status)
+{
+    m_session->activity_status = activity_status;    
+    return *this;
+}
+
+MBSMFMBSSession &MBSMFMBSSession::setAnyUeInd(bool any_ue_ind)
+{
+    m_session->any_ue_ind = any_ue_ind;
+    return *this;
+
+}
 
 void MBSMFMBSSession::sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data)
 {
