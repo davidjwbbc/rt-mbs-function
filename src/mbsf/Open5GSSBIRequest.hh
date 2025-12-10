@@ -40,7 +40,7 @@ public:
     using CaseInsensitiveString = std::basic_string<char, CaseInsensitiveTraits<char> >;
     using HeadersMap = std::map<CaseInsensitiveString, std::function<void(const CaseInsensitiveString &field, const char *val)> >;
     using ParametersMap = std::map<std::string, std::function<void(const std::string &param, const char *val)> >;
-   
+
     Open5GSSBIRequest(ogs_sbi_request_t *request, bool owner = true) :m_request(request), m_owner(owner) {};
     Open5GSSBIRequest(const std::string &method, const std::string &uri, const std::string &apiVersion, const std::optional<std::string> &data, const std::optional<std::string> &type);
     Open5GSSBIRequest(Open5GSSBIMessage &message);

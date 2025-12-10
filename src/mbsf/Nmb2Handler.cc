@@ -85,83 +85,83 @@ bool Nmb2Handler::processEvent(Open5GSEvent &event)
     case OGS_EVENT_SBI_CLIENT:
     {
         ogs_assert(event.ogsEvent());
-	
-	Open5GSSBIResponse response(event.sbiResponse());
+
+        Open5GSSBIResponse response(event.sbiResponse());
         Open5GSSBIMessage message;
 
-	try {
-	    message.parseHeader(response);
-	} catch (std::exception &ex) {
-	    ogs_error("ogs_sbi_parse_response() failed decoding client response");
-	    response.setOwner(true);
-	    return true;
-	}
+        try {
+            message.parseHeader(response);
+        } catch (std::exception &ex) {
+            ogs_error("ogs_sbi_parse_response() failed decoding client response");
+            response.setOwner(true);
+            return true;
+        }
 
         message.resStatus(response.status());
 
         std::string service_name(message.serviceName());
         if (service_name == OGS_SBI_SERVICE_NAME_NMBSTF_DISTSESSION) {
-	    std::string resource(message.resourceComponent(0));
-	    if (resource == "dist-sessions") {
-	        response.setOwner(true);
+            std::string resource(message.resourceComponent(0));
+            if (resource == "dist-sessions") {
+                response.setOwner(true);
 
-		ogs_sbi_xact_t *sbi_xact = NULL;
-	        ogs_pool_id_t sbi_xact_id = 0;
+                ogs_sbi_xact_t *sbi_xact = NULL;
+                ogs_pool_id_t sbi_xact_id = 0;
 
-	        sbi_xact_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_xact_t*>(event.sbiData()));
-		ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID && sbi_xact_id <= OGS_MAX_POOL_ID);
+                sbi_xact_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_xact_t*>(event.sbiData()));
+                ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID && sbi_xact_id <= OGS_MAX_POOL_ID);
 
-	        sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
-	        ogs_assert(sbi_xact);
-	        if (!sbi_xact) {
-		    /* CLIENT_WAIT timer could remove SBI transaction
-		     * before receiving SBI message */
-		    ogs_error("SBI transaction has already been removed");
-		    return true;
-	        }
-		std::string method(message.method());
-	        if (method == OGS_SBI_HTTP_METHOD_POST) {
-		    if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK || message.resStatus() == OGS_SBI_HTTP_STATUS_CREATED)
-		    {
-			if( response.contentLength() && valid_content_type(message))
-			{
-			   
-			    handle_mbstf_dist_session_response(sbi_xact, response);
-			} else {
+                sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
+                ogs_assert(sbi_xact);
+                if (!sbi_xact) {
+                    /* CLIENT_WAIT timer could remove SBI transaction
+                     * before receiving SBI message */
+                    ogs_error("SBI transaction has already been removed");
+                    return true;
+                }
+                std::string method(message.method());
+                if (method == OGS_SBI_HTTP_METHOD_POST) {
+                    if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK || message.resStatus() == OGS_SBI_HTTP_STATUS_CREATED)
+                    {
+                        if( response.contentLength() && valid_content_type(message))
+                        {
+
+                            handle_mbstf_dist_session_response(sbi_xact, response);
+                        } else {
                             ogs_error("Received invalid content-type from MBSTF");
                             UserDataIngSession::deleteMBSTFSession(sbi_xact);
                             send_error(sbi_xact);
                          }
 
-		    } else {
-		        ogs_error("HTTP response error [%d]", message.resStatus());
-			UserDataIngSession::deleteMBSTFSession(sbi_xact);
-		        send_error(sbi_xact);
+                    } else {
+                        ogs_error("HTTP response error [%d]", message.resStatus());
+                        UserDataIngSession::deleteMBSTFSession(sbi_xact);
+                        send_error(sbi_xact);
 
-		    }
+                    }
 
-	        } else if (method == OGS_SBI_HTTP_METHOD_DELETE) {
-		    if (message.resStatus() == OGS_SBI_HTTP_STATUS_NO_CONTENT)
-		    {
-		        std::string resource_id(message.resourceComponent(1));
-		        if(!resource_id.empty()) {
-			    if(sbi_xact) {	
+                } else if (method == OGS_SBI_HTTP_METHOD_DELETE) {
+                    if (message.resStatus() == OGS_SBI_HTTP_STATUS_NO_CONTENT)
+                    {
+                        std::string resource_id(message.resourceComponent(1));
+                        if(!resource_id.empty()) {
+                            if(sbi_xact) {
                                 remove_xact(sbi_xact);
-				sbi_xact = nullptr;
-			    }
-			    handle_mbstf_dist_session_delete(resource_id);
-		        }
+                                sbi_xact = nullptr;
+                            }
+                            handle_mbstf_dist_session_delete(resource_id);
+                        }
 
-		    }
+                    }
 
 
-	        } else if (method == OGS_SBI_HTTP_METHOD_PATCH) {
+                } else if (method == OGS_SBI_HTTP_METHOD_PATCH) {
                     ogs_info("PATCH MESSAGE STATUS: %d %lu CT:[%s]", message.resStatus(), response.contentLength(), message.contentType());
-		     if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK)
+                     if (message.resStatus() == OGS_SBI_HTTP_STATUS_OK)
                     {
                         if( response.contentLength() && valid_content_type(message))
                         {
-			    CJson patch_response_from_mbstf(CJson::Null);
+                            CJson patch_response_from_mbstf(CJson::Null);
                             try {
                                 patch_response_from_mbstf = CJson::parse(response.content());
                             } catch (std::exception &ex) {
@@ -172,7 +172,7 @@ bool Nmb2Handler::processEvent(Open5GSEvent &event)
                                 std::string txt(patch_response_from_mbstf.serialise());
                                 ogs_debug("PATCH RESPONSE Parsed JSON: %s", txt.c_str());
                             }
-			    UserDataIngSession::handlePatchUpdateResponse(sbi_xact);
+                            UserDataIngSession::handlePatchUpdateResponse(sbi_xact);
 
 
 
@@ -184,17 +184,17 @@ bool Nmb2Handler::processEvent(Open5GSEvent &event)
 
 
                 } else {
-		    ogs_error("Invalid HTTP method [%s]", method.c_str());
-		}
-		if(sbi_xact) {
-		    remove_xact(sbi_xact);
-		    sbi_xact = nullptr;
-		}
-		return true;
-	    }
-	    return false;
-	}
-	
+                    ogs_error("Invalid HTTP method [%s]", method.c_str());
+                }
+                if(sbi_xact) {
+                    remove_xact(sbi_xact);
+                    sbi_xact = nullptr;
+                }
+                return true;
+            }
+            return false;
+        }
+
         if(!response.owner()) response.resetHeader();
     }
     return false;
@@ -232,19 +232,19 @@ static bool handle_mbstf_dist_session_response(ogs_sbi_xact_t *xact, Open5GSSBIR
         create_rsp_data_from_mbstf = CJson::parse(response.content());
     } catch (std::exception &ex) {
         UserDataIngSession::deleteMBSTFSession(xact);
-	send_error(xact);
-	return true;
+        send_error(xact);
+        return true;
     }
     try {
         create_rsp_data.reset(new CreateRspData(create_rsp_data_from_mbstf, false));
 
     } catch (std::exception &err) {
         UserDataIngSession::deleteMBSTFSession(xact);
-	char *error = ogs_msprintf("%s", err.what());
-	ogs_error("%s", error);
-	send_error(xact);
-	ogs_free(error);
-	return true;
+        char *error = ogs_msprintf("%s", err.what());
+        ogs_error("%s", error);
+        send_error(xact);
+        ogs_free(error);
+        return true;
     }
 
     dist_session = create_rsp_data->getDistSession();

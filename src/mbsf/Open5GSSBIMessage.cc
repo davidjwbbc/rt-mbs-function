@@ -41,7 +41,7 @@ Open5GSSBIMessage::~Open5GSSBIMessage()
     if (m_message != nullptr && m_owner) {
         ogs_sbi_message_free(m_message);
         delete m_message;
-	m_message = nullptr;
+        m_message = nullptr;
     }
 }
 
@@ -174,7 +174,7 @@ void Open5GSSBIMessage::parseHeader(Open5GSSBIResponse &response)
     ensureMessage();
     resetHeader();
 
-    
+
     clear_header(&response.ogsSBIResponse()->h);
     int rv = ogs_sbi_parse_header(m_message, &response.ogsSBIResponse()->h);
     if (rv != OGS_OK) throw std::runtime_error("ogs_sbi_parse_header() failed");

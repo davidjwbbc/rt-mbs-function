@@ -65,7 +65,7 @@ public:
 
     uint16_t mcc();
     uint16_t mnc();
-    
+
 private:
     std::shared_ptr<PlmnId> m_plmnId;
 

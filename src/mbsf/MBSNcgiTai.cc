@@ -72,21 +72,21 @@ CJson MBSNcgiTai::json(bool as_request = false) const
 }
 
 mb_smf_sc_ncgi_tai_t *MBSNcgiTai::populateNcgiTai() {
-    
 
-    std::shared_ptr< TrackingAreaIdentity > tracking_area_id = nullptr; 
+
+    std::shared_ptr< TrackingAreaIdentity > tracking_area_id = nullptr;
     const std::shared_ptr< Tai > &tai = getTai();
     tracking_area_id.reset(new TrackingAreaIdentity(tai));
     mb_smf_sc_tai_t *mb_smf_tai = tracking_area_id->populateTai();
     mb_smf_sc_ncgi_tai_t *mb_smf_ncgi_tai = mb_smf_sc_ncgi_tai_new();
     mb_smf_ncgi_tai->tai = *mb_smf_tai;
-    ncgis(mb_smf_ncgi_tai); 
+    ncgis(mb_smf_ncgi_tai);
     return mb_smf_ncgi_tai;
-    
+
 }
 
 void MBSNcgiTai::ncgis(mb_smf_sc_ncgi_tai_t *ncgi_tai) {
-    
+
     //std::list<std::optional<std::shared_ptr< Ncgi > >
     const NcgiTai::CellListType &cells = getCellList();
 
@@ -94,9 +94,9 @@ void MBSNcgiTai::ncgis(mb_smf_sc_ncgi_tai_t *ncgi_tai) {
 
     for(const auto &cell: cells) {
         if(cell.has_value()) {
-	    std::shared_ptr< MBSNcgi > mbs_ncgi = nullptr;
-	    std::shared_ptr< Ncgi > ncgi = cell.value();
-	    mbs_ncgi.reset(new MBSNcgi(ncgi));
+            std::shared_ptr< MBSNcgi > mbs_ncgi = nullptr;
+            std::shared_ptr< Ncgi > ncgi = cell.value();
+            mbs_ncgi.reset(new MBSNcgi(ncgi));
             mb_smf_sc_ncgi_t *mb_smf_ncgi = mbs_ncgi->populateNcgi();
             ogs_list_add(&ncgi_tai->ncgis, mb_smf_ncgi);
         }

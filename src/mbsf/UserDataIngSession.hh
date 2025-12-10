@@ -97,24 +97,24 @@ public:
         std::shared_ptr<DistributionSessionInfo> distributionSessionInfo;
         std::shared_ptr<MBSDistributionSessionInfo> info;
         std::shared_ptr<Ssm> ssm;
-	std::shared_ptr<Open5GSSBIRequest> request;
+        std::shared_ptr<Open5GSSBIRequest> request;
         ogs_pool_id_t streamId;
         std::shared_ptr<MBSMFMBSSession> MBSSession = nullptr;
-	MBSSessionState MBSSessionStatus = MBSSessionState::NO;
-	std::optional<fiveg_mag_reftools::ProblemCause> mbsmfProblemCause = std::nullopt;
-       	std::optional<CJson> mbsmfProblemDetailJson = std::nullopt;
+        MBSSessionState MBSSessionStatus = MBSSessionState::NO;
+        std::optional<fiveg_mag_reftools::ProblemCause> mbsmfProblemCause = std::nullopt;
+               std::optional<CJson> mbsmfProblemDetailJson = std::nullopt;
         bool receivedMBSTFResponse = false;
         bool receivedMBSTFPatchResponse = false;
         bool patchUpdateSucceded = false;
-	bool stateUpdate = false;
-	bool needsUpdate = false;
-	bool markForDeletion = false;
+        bool stateUpdate = false;
+        bool needsUpdate = false;
+        bool markForDeletion = false;
         std::string distSessionId;
-	bool MBSTFDistSessionDeleted;
-	std::string mbstfNFInstanceId;
-	std::string mbstfDistSessionId;
-	bool distSessionState;
-	mb_smf_sc_tmgi_t *tmgi = nullptr;
+        bool MBSTFDistSessionDeleted;
+        std::string mbstfNFInstanceId;
+        std::string mbstfDistSessionId;
+        bool distSessionState;
+        mb_smf_sc_tmgi_t *tmgi = nullptr;
 
 
     };
@@ -133,8 +133,8 @@ public:
     enum OgsExtendedEventId : int {
         MBSF_LOCAL_SEND_MBSTF_REQ_BUILD = OGS_MAX_NUM_OF_PROTO_EVENT + 1600,
         MBSF_LOCAL_SEND_MBSTF_DELETE_SESSION,
-	MBSF_LOCAL_SEND_MBSTF_PATCH_ROLLBACK,
-	MBSF_LOCAL_SEND_MBSTF_PATCH_BUILD
+        MBSF_LOCAL_SEND_MBSTF_PATCH_ROLLBACK,
+        MBSF_LOCAL_SEND_MBSTF_PATCH_BUILD
     };
 
     const std::string &userDataIngSessionId() const { return m_UserDataIngSessionId; };
@@ -237,9 +237,9 @@ public:
 
     static void setMBSSessionFailureFlag(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt, const std::optional<CJson> &problem_detail_json = std::nullopt);
     static void handleMBSSessionError(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt,
-		    const std::optional<CJson> &problem_detail_json = std::nullopt);
+                    const std::optional<CJson> &problem_detail_json = std::nullopt);
     static void populateAndSendError(void *data, const std::optional<fiveg_mag_reftools::ProblemCause> &cause = std::nullopt,
-		    const std::optional<CJson> &problem_detail_json = std::nullopt);
+                    const std::optional<CJson> &problem_detail_json = std::nullopt);
     static void deleteMBSTFSession(ogs_sbi_xact_t *xact);
     static void handlePatchUpdateResponse(ogs_sbi_xact_t *xact);
     static void rollbackMBSTFDistSessionState(ogs_sbi_xact_t *xact);

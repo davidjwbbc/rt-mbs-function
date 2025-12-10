@@ -71,14 +71,14 @@ MBSF_NAMESPACE_START
 MediaComp::MediaComp(CJson &json, bool as_request)
     :m_mbsMediaComp(new MbsMediaCompRm(json, as_request))
     ,m_mediaInfo(nullptr)
-    ,m_qosReq(nullptr)	
+    ,m_qosReq(nullptr)
 {
 }
 
 MediaComp::MediaComp(const std::shared_ptr<MbsMediaCompRm> &mbs_media_comp)
     :m_mbsMediaComp(mbs_media_comp)
     ,m_mediaInfo(nullptr)
-    ,m_qosReq(nullptr)	
+    ,m_qosReq(nullptr)
 {
 }
 
@@ -96,33 +96,33 @@ std::list<std::optional<std::string >> MediaComp::getMbsFlowDescs() {
     reftools::mbsf::MbsMediaCompRm::MbsFlowDescsType mbs_flow_descs = m_mbsMediaComp->getMbsFlowDescs();
     std::optional<std::list<std::optional<std::string >, fiveg_mag_reftools::OgsAllocator<std::optional<std::string > > > > flow_descs = *mbs_flow_descs;
     if(!flow_descs.has_value()) {
-       return {}; 
+       return {};
     }
     return std::list<std::optional<std::string >>(flow_descs->begin(), flow_descs->end());
 
 }
 
 ogs_list_t *MediaComp::flowDescriptions() {
-    
+
     //std::optional<std::list<std::optional<std::string >, fiveg_mag_reftools::OgsAllocator<std::optional<std::string > > > > MbsFlowDescsType;
     const reftools::mbsf::MbsMediaCompRm::MbsFlowDescsType &mbs_flow_descs = m_mbsMediaComp->getMbsFlowDescs();
     if(!mbs_flow_descs.has_value()) return nullptr;
 
     ogs_list_t *flow_desc = nullptr;
-    
+
     flow_desc = (ogs_list_t*) ogs_calloc(1,sizeof(*flow_desc));
     ogs_assert(flow_desc);
     ogs_list_init(flow_desc);
 
     for(const auto &mbs_flow_desc: mbs_flow_descs.value()) {
         if(mbs_flow_desc.has_value()) {
-	    mb_smf_sc_flow_description_t *flow_desc_node = mb_smf_sc_flow_description_new();
+            mb_smf_sc_flow_description_t *flow_desc_node = mb_smf_sc_flow_description_new();
             ogs_assert(flow_desc_node);
-	    const std::string &mbs_flow_desc_val = mbs_flow_desc.value();
-	    flow_desc_node->string = ogs_strdup(mbs_flow_desc_val.c_str());
-	    ogs_list_add(flow_desc, flow_desc_node);
-	}
-        
+            const std::string &mbs_flow_desc_val = mbs_flow_desc.value();
+            flow_desc_node->string = ogs_strdup(mbs_flow_desc_val.c_str());
+            ogs_list_add(flow_desc, flow_desc_node);
+        }
+
     }
     return flow_desc;
 
@@ -130,33 +130,33 @@ ogs_list_t *MediaComp::flowDescriptions() {
 
 mb_smf_sc_mbs_media_comp_t *MediaComp::populateMediaComp() {
     std::shared_ptr< MediaInfo > info = nullptr;
-    std::shared_ptr< QoSReq > qos_req = nullptr; 
+    std::shared_ptr< QoSReq > qos_req = nullptr;
     mb_smf_sc_mbs_media_comp_t *media_comp = mb_smf_sc_mbs_media_comp_new();
     media_comp->id = getId();
     media_comp->flow_descriptions = flowDescriptions();
     const std::optional<std::shared_ptr< ReservPriority > > &reserv_priority =  getMbsSdfResPrio();
     if(reserv_priority.has_value()) {
-	std::shared_ptr< ReservPriority > priority = reserv_priority.value();    
-        media_comp->mbs_sdf_reserve_priority = static_cast<uint8_t>(priority->getValue());  
+        std::shared_ptr< ReservPriority > priority = reserv_priority.value();
+        media_comp->mbs_sdf_reserve_priority = static_cast<uint8_t>(priority->getValue());
     } else {
-        media_comp->mbs_sdf_reserve_priority = 0;  
+        media_comp->mbs_sdf_reserve_priority = 0;
     }
     const std::optional<std::shared_ptr< MbsMediaInfo > >  &media_info = getMbsMediaInfo();
     if(media_info.has_value()) {
         info.reset(new MediaInfo(media_info.value()));
-        media_comp->media_info = info->populateMediaInfo();	
+        media_comp->media_info = info->populateMediaInfo();
     } else {
         media_comp->media_info = nullptr;
     }
     const std::optional<std::string > &qos_ref = getQosRef();
     ogs_info("MEDIA COMP: BEFORE PROCOESSING QOSREF");
     if(qos_ref.has_value()) {
-	    
+
         ogs_info("MEDIA COMP: PROCOESSING QOSREF [%s], [%s]", media_comp->qos_ref, qos_ref.value().c_str());
         media_comp->qos_ref = ogs_strdup(qos_ref.value().c_str());
         ogs_info("MEDIA COMP: AFTER ASSIGING PROCESSING QOSREF [%s], [%s]", media_comp->qos_ref, qos_ref.value().c_str());
     } else {
-	    
+
         ogs_info("MEDIA COMP: NO QOSREF");
         media_comp->qos_ref = nullptr;
     }
@@ -164,9 +164,9 @@ mb_smf_sc_mbs_media_comp_t *MediaComp::populateMediaComp() {
     const std::optional<std::shared_ptr< MbsQoSReq > > &mbs_qos_req = getMbsQoSReq();
     if(mbs_qos_req.has_value()) {
         qos_req.reset(new QoSReq(mbs_qos_req.value()));
-        media_comp->mbs_qos_req = qos_req->populateQoSReq();		    	
+        media_comp->mbs_qos_req = qos_req->populateQoSReq();
     } else {
-        media_comp->mbs_qos_req = nullptr;    
+        media_comp->mbs_qos_req = nullptr;
     }
     return media_comp;
 }

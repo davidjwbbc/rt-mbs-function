@@ -69,7 +69,7 @@ CJson MBSPlmnId::json(bool as_request = false) const
 uint16_t MBSPlmnId::mcc() {
     uint16_t uint16_mcc;
     unsigned long long tmp;
-    
+
     const std::string &mcc = getMcc();
 
     tmp = std::stoull(mcc);
@@ -89,12 +89,12 @@ uint16_t MBSPlmnId::mnc() {
     const std::string &mnc = getMnc();
 
     tmp = std::stoull(mnc);
-    
+
     tmp = std::clamp<unsigned long long>(tmp, 0ULL, static_cast<unsigned long long>(std::numeric_limits<uint16_t>::max()));
     uint16_mnc = static_cast<uint16_t>(tmp);
 
     return uint16_mnc;
-	
+
 }
 
 

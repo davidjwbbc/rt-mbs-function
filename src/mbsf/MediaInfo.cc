@@ -122,11 +122,11 @@ void MediaInfo::codecs(mb_smf_sc_mbs_media_info_t *media_info) {
     for(const auto &codec: codecs.value()) {
         if(codec.has_value()) {
             const std::string &media_codec = codec.value();
-            media_info->codecs[i++] = ogs_strdup(media_codec.c_str());	    
-	}
-	if(i>2) break;
+            media_info->codecs[i++] = ogs_strdup(media_codec.c_str());
+        }
+        if(i>2) break;
     }
-     
+
 }
 
 mb_smf_sc_mbs_media_info_t *MediaInfo::populateMediaInfo() {
@@ -139,7 +139,7 @@ mb_smf_sc_mbs_media_info_t *MediaInfo::populateMediaInfo() {
 }
 
 mb_smf_sc_mbs_media_type_e MediaInfo::lookup() {
-  const auto &map = MediaInfo::mediaType(); 	
+  const auto &map = MediaInfo::mediaType();
   const std::optional<std::shared_ptr< MediaType > > &media_type = getMediaType();
   if(!media_type.has_value()) return MEDIA_TYPE_NULL;
   const std::shared_ptr< MediaType > &mbs_media_type = media_type.value();

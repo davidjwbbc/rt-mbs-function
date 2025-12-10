@@ -72,7 +72,7 @@ CJson GeographicalArea::json(bool as_request = false) const
 {
 
     std::shared_ptr< GeographicalCoordinate > gc = nullptr;
-    
+
     const std::shared_ptr< GeographicalCoordinates > &point = getPoint();
     gc.reset(new GeographicalCoordinate(point));
 

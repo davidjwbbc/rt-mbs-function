@@ -93,11 +93,11 @@ public:
     MBSMFMBSSession &setActivityStatus(mb_smf_sc_activity_status_e activity_status);
     MBSMFMBSSession &setAnyUeInd(bool any_ue_ind);
     MBSMFMBSSession &setServiceInfo(std::shared_ptr< MbsServiceInfo > mbs_service_info);
-    MBSMFMBSSession &setExternalServiceArea(std::shared_ptr< ExternalMbsServiceArea > ext_mbs_service_area);    
+    MBSMFMBSSession &setExternalServiceArea(std::shared_ptr< ExternalMbsServiceArea > ext_mbs_service_area);
     MBSMFMBSSession &setServiceArea(std::shared_ptr< MbsServiceArea > mbs_service_area);
     MBSMFMBSSession &setFsaId(const std::string &mbs_fsa_id);
     MBSMFMBSSession &setLocationDependent(bool location_dependent);
-    
+
     void deleteSession();
 
     void pushChanges();

@@ -65,7 +65,7 @@ public:
     const std::shared_ptr<NcgiTai> &getNcgiTai() const {return m_ncgiTai;};
     const std::shared_ptr< Tai > &getTai() const {return m_ncgiTai->getTai();};
     const NcgiTai::CellListType &getCellList() const {return m_ncgiTai->getCellList();};
-    
+
     mb_smf_sc_ncgi_tai_t *populateNcgiTai();
     void ncgis(mb_smf_sc_ncgi_tai_t *ncgi_tai);
 

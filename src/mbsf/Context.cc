@@ -94,9 +94,9 @@ bool Context::parseConfig()
                     std::string active_user_services_limit(mbsf_iter.value());
                     capacity.activeUserServicesSoftLimit = std::stoi(active_user_services_limit);
                 } else if (mbsf_key == "actPeriodGoToEstablishedState") {
-		     std::string act_period_established_state_dur(mbsf_iter.value());
-		     actPeriodEstablishedStateDuration = std::stoll( act_period_established_state_dur);
-		} else if (mbsf_key == "allowedMulticastRange" ) {
+                     std::string act_period_established_state_dur(mbsf_iter.value());
+                     actPeriodEstablishedStateDuration = std::stoll( act_period_established_state_dur);
+                } else if (mbsf_key == "allowedMulticastRange" ) {
                     allowedMulticastRange = std::string(mbsf_iter.value());
                 } else if (mbsf_key == "mbsUserServices" || mbsf_key == "mbsUserDataIngestSession" ) {
                     Open5GSYamlIter mbsUserServices_array(mbsf_iter);

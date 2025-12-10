@@ -190,7 +190,7 @@ bool Open5GSNetworkFunction::configureLoggingDomain()
 
 bool Open5GSNetworkFunction::sbiParseConfig(const char *app_section, const char *nrf_section, const char *scp_section)
 {
-    if (ogs_sbi_self()->tls.server.scheme == OpenAPI_uri_scheme_NULL) ogs_sbi_self()->tls.server.scheme = OpenAPI_uri_scheme_http;	
+    if (ogs_sbi_self()->tls.server.scheme == OpenAPI_uri_scheme_NULL) ogs_sbi_self()->tls.server.scheme = OpenAPI_uri_scheme_http;
     return ogs_sbi_context_parse_config(app_section, nrf_section, scp_section) == OGS_OK;
 }
 

@@ -129,7 +129,7 @@ void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id
             if(get_src_dest_of_same_addr_family(AF_INET, ai_src, ai_dest, &src_addr, &dest_addr))
             {
                 session_id->ssm.family = AF_INET;
-		if (src_addr != nullptr) {
+                if (src_addr != nullptr) {
                     const struct in_addr *src_in = reinterpret_cast<const struct in_addr *>(src_addr);
                     session_id->ssm.source.ipv4 = *src_in;
                 }
@@ -174,7 +174,7 @@ void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id
        {
            if(get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
            {
-	       session_id->ssm.family = AF_INET6;
+               session_id->ssm.family = AF_INET6;
                 if (src_addr != nullptr) {
                     const struct in6_addr *src_in = reinterpret_cast<const struct in6_addr *>(src_addr);
                     session_id->ssm.source.ipv6 = *src_in;

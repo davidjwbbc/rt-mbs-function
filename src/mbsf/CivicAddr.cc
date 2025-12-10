@@ -71,9 +71,9 @@ CJson CivicAddr::json(bool as_request = false) const
  mb_smf_sc_civic_address_t *CivicAddr::populateCivicAddress()
 {
     mb_smf_sc_civic_address_t *civic_addr = mb_smf_sc_civic_address_new();
-    
+
     populateAddr(civic_addr->a);
-    
+
     civic_addr->country = populate_mb_smf_civic_addr_fields(getCountry());
     civic_addr->prd = populate_mb_smf_civic_addr_fields(getPRD());
     civic_addr->pod = populate_mb_smf_civic_addr_fields(getPOD());
@@ -108,11 +108,11 @@ CJson CivicAddr::json(bool as_request = false) const
 
 void CivicAddr::populateAddr(char* a[6]) const {
      const std::optional<std::string> addr_fields[6] = {
-        getA1(), 
-	getA2(),
-	getA3(), 
-	getA4(), 
-	getA5(), 
+        getA1(),
+        getA2(),
+        getA3(),
+        getA4(),
+        getA5(),
         getA6()
     };
 

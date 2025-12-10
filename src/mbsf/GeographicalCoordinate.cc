@@ -69,7 +69,7 @@ CJson GeographicalCoordinate::json(bool as_request = false) const
 
  mb_smf_sc_geographic_coordinate_t *GeographicalCoordinate::populateGeographicCoordinate()
 {
-    
+
     mb_smf_sc_geographic_coordinate_t *gc = nullptr;
     //gc = mb_smf_sc_geographic_coordinate_new();
     gc->longitude = getLon();

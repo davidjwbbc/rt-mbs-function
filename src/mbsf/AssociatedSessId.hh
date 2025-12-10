@@ -67,7 +67,7 @@ public:
     const std::shared_ptr<AssociatedSessionId> &getAssociatedSessionId() const {return m_associatedSessionId;};
     const std::shared_ptr< IpAddr > &getSourceIpAddr() const {return m_associatedSessionId->getSourceIpAddr();};
     const std::shared_ptr< IpAddr > &getDestIpAddr() const {return m_associatedSessionId->getDestIpAddr();};
-    
+
     mb_smf_sc_associated_session_id_t *populateAssociatedSessionId();
     void populateSsm(mb_smf_sc_associated_session_id_t *session_id);
 

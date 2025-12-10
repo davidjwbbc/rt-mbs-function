@@ -52,8 +52,8 @@ public:
     using DistSessionState = ActivePeriodsBase::DistSessionState;
     using ActPeriodsType = reftools::mbsf::MBSUserDataIngSession::ActPeriodsType;
     using MbsDistSessStateType = reftools::mbsf::MBSDistributionSessionInfo::MbsDistSessStateType;
-	
-    AlwaysActive() {};    
+
+    AlwaysActive() {};
     virtual ~AlwaysActive() {};
 
     virtual const DistSessionState &currentState(const MbsDistSessStateType &dist_session_state) const;

@@ -94,26 +94,26 @@ ogs_hash_t *ServiceInfo::populateMediaComps()
     ogs_hash_t *mb_smf_media_comps = ogs_hash_make();
     for(const auto &[key, mbs_media_comp]: mbs_media_comps) {
         if(mbs_media_comp.has_value()) {
-	    std::shared_ptr<MediaComp> media_comp = nullptr;
+            std::shared_ptr<MediaComp> media_comp = nullptr;
 
-	    std::shared_ptr<MbsMediaCompRm> comp = mbs_media_comp.value();
-	    
-	    media_comp.reset(new MediaComp(mbs_media_comp.value()));
+            std::shared_ptr<MbsMediaCompRm> comp = mbs_media_comp.value();
 
-	    mb_smf_sc_mbs_media_comp_t *mb_smf_media_comp = media_comp->populateMediaComp();
-	    if(mb_smf_media_comp) {
-                ogs_hash_set(mb_smf_media_comps, &mb_smf_media_comp->id, sizeof(mb_smf_media_comp->id), mb_smf_media_comp);	        
-	    }
+            media_comp.reset(new MediaComp(mbs_media_comp.value()));
 
-	}		
-    
+            mb_smf_sc_mbs_media_comp_t *mb_smf_media_comp = media_comp->populateMediaComp();
+            if(mb_smf_media_comp) {
+                ogs_hash_set(mb_smf_media_comps, &mb_smf_media_comp->id, sizeof(mb_smf_media_comp->id), mb_smf_media_comp);
+            }
+
+        }
+
     }
     return mb_smf_media_comps;
 
 }
 /*
 uint64_t *ServiceInfo::ambr() {
-    const std::optional<std::string > &ambr = getMbsSessionAmbr(); 
+    const std::optional<std::string > &ambr = getMbsSessionAmbr();
     if(!ambr.has_value()) return nullptr;
     static uint64_t br;
     br = std::stoull(ambr.value());
@@ -122,7 +122,7 @@ uint64_t *ServiceInfo::ambr() {
 */
 
 uint64_t *ServiceInfo::ambr() {
-    const std::optional<std::string > &ambr = getMbsSessionAmbr(); 
+    const std::optional<std::string > &ambr = getMbsSessionAmbr();
     if(!ambr.has_value()) return nullptr;
     std::string br = ambr.value();
 

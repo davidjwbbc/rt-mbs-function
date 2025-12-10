@@ -71,7 +71,7 @@ CJson TrackingAreaIdentity::json(bool as_request = false) const
 }
 
 mb_smf_sc_tai_t *TrackingAreaIdentity::populateTai() {
-    
+
     std::shared_ptr< MBSPlmnId > mbs_plmn_id = nullptr;
     uint16_t mcc;
     uint16_t mnc;
@@ -85,8 +85,8 @@ mb_smf_sc_tai_t *TrackingAreaIdentity::populateTai() {
     mnc = mbs_plmn_id->mnc();
     tracking_area = tac();
     n_id = nid();
-    
-    return mb_smf_sc_tai_new(mcc, mnc, tracking_area, n_id); 
+
+    return mb_smf_sc_tai_new(mcc, mnc, tracking_area, n_id);
 }
 
 uint32_t TrackingAreaIdentity::tac() {

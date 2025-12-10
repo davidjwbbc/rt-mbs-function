@@ -120,7 +120,7 @@ void Open5GSSBIRequest::parametersMap(const Open5GSSBIRequest::ParametersMap &ma
             it->second(it->first, reinterpret_cast<const char*>(ogs_hash_this_val(hi)));
         }
     }
-} 
+}
 
 
 MBSF_NAMESPACE_STOP

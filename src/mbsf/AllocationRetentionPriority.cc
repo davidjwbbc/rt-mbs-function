@@ -101,7 +101,7 @@ mb_smf_sc_arp_t *AllocationRetentionPriority::populateArp() {
 }
 
 mb_smf_sc_preemption_capability_e AllocationRetentionPriority::preemptionCapabilityLookup() {
-    const std::shared_ptr< PreemptionCapability > &preemption_capability = getPreemptionCapability(); 
+    const std::shared_ptr< PreemptionCapability > &preemption_capability = getPreemptionCapability();
     const std::string &preempt_capability = preemption_capability->getString();
     auto it = preemptionCap.find(preempt_capability);
     if (it == preemptionCap.end()) return ARP_PREEMPT_CAPABILITY_NULL;

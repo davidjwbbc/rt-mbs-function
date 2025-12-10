@@ -53,7 +53,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
     if (Nmb2Handler::processEvent(event)) return;
     if (MBSMFMBSSession::processEvent(event)) return;
     if (mb_smf_sc_process_event(event.ogsEvent())) return;
-    
+
     switch (event.id()) {
     case OGS_FSM_ENTRY_SIG:
         ogs_info("[%s] MBSF Running", ogs_sbi_self()->nf_instance->id);
@@ -67,7 +67,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
             Open5GSSBIRequest request(event.sbiRequest());
             Open5GSSBIStream stream(reinterpret_cast<ogs_sbi_stream_t*>(event.sbiData()));
 
-	    Open5GSSBIMessage message;
+            Open5GSSBIMessage message;
 
             try {
                 message.parseHeader(request);
@@ -127,7 +127,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
             }
 
             message.resStatus(response.status());
-      
+
             std::string service_name(message.serviceName());
             if (service_name == OGS_SBI_SERVICE_NAME_NNRF_DISC) {
                 std::string resource(message.resourceComponent(0));
@@ -135,7 +135,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
                     ogs_sbi_xact_t *sbi_xact = NULL;
                     ogs_pool_id_t sbi_xact_id = 0;
 
-		    message.parseResponse(response);
+                    message.parseResponse(response);
 
                     sbi_xact_id = OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_xact_t*>(event.sbiData()));
                     ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID && sbi_xact_id <= OGS_MAX_POOL_ID);
@@ -163,8 +163,8 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
                           ogs_assert_if_reached();
                     }
 
-		    if(sbi_xact) UserDataIngSession::removeXact(sbi_xact);
-		    sbi_xact = NULL;
+                    if(sbi_xact) UserDataIngSession::removeXact(sbi_xact);
+                    sbi_xact = NULL;
                 }
 
             } else if (service_name == OGS_SBI_SERVICE_NAME_NNRF_NFM) {
@@ -234,7 +234,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
             case OGS_TIMER_NF_INSTANCE_VALIDITY:
                 {
                     ogs_info("OGS_EVENT_SBI_TIMER [%d]", event.timerId());
-		    ogs_sbi_nf_instance_t *nf_instance(reinterpret_cast<ogs_sbi_nf_instance_t*>(event.sbiData()));
+                    ogs_sbi_nf_instance_t *nf_instance(reinterpret_cast<ogs_sbi_nf_instance_t*>(event.sbiData()));
                     ogs_assert(nf_instance);
                     ogs_assert(OGS_FSM_STATE(&nf_instance->sm));
 
@@ -278,13 +278,13 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
                           break;
                     }
 
-		    ogs_sbi_stream_t *ogs_stream = reinterpret_cast<ogs_sbi_stream_t*>(ogs_sbi_stream_find_by_id(sbi_xact->assoc_stream_id));
+                    ogs_sbi_stream_t *ogs_stream = reinterpret_cast<ogs_sbi_stream_t*>(ogs_sbi_stream_find_by_id(sbi_xact->assoc_stream_id));
                     if(!ogs_stream) {
                         if(sbi_xact) UserDataIngSession::removeXact(sbi_xact);
                         return;
                      }
 
-		    Open5GSSBIStream stream(sbi_xact->assoc_stream_id);
+                    Open5GSSBIStream stream(sbi_xact->assoc_stream_id);
                     if(sbi_xact) UserDataIngSession::removeXact(sbi_xact);
                     ogs_error("Cannot receive SBI message");
                     if (stream) {

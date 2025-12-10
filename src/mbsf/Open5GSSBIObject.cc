@@ -68,7 +68,7 @@ ogs_sbi_xact_t *Open5GSSBIObject::discoverAndSend(ogs_pool_id_t stream_id, ogs_s
     }
 
     xact = ogs_sbi_xact_add(xact_id, m_ogsObject, service_type, discovery_option, build, (void *)context, (void *)data);
-   
+
     if (!xact) {
         ogs_error("discoverAndSend() failed as adding transaction failed");
         return nullptr;

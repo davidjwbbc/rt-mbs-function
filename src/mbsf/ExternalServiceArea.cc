@@ -73,7 +73,7 @@ CJson ExternalServiceArea::json(bool as_request = false) const
 }
 
 mb_smf_sc_ext_mbs_service_area_t *ExternalServiceArea::populateExternalServiceArea() {
-    
+
 
     mb_smf_sc_ext_mbs_service_area_t *ext_mbs_service_area = mb_smf_sc_ext_mbs_service_area_new();
     geographicAreas(ext_mbs_service_area);
@@ -82,7 +82,7 @@ mb_smf_sc_ext_mbs_service_area_t *ExternalServiceArea::populateExternalServiceAr
 }
 
 void ExternalServiceArea::geographicAreas(mb_smf_sc_ext_mbs_service_area_t *ext_mbs_service_area) {
-    
+
     //std::optional<std::list<std::optional<std::shared_ptr< GeographicArea > >
     const reftools::mbsf::ExternalMbsServiceArea::GeographicAreaListType &geo_areas = getGeographicAreaList();
     if(!geo_areas.has_value()) return;
@@ -91,9 +91,9 @@ void ExternalServiceArea::geographicAreas(mb_smf_sc_ext_mbs_service_area_t *ext_
 
     for(const auto &geo_area: geo_areas.value()) {
         if(geo_area.has_value()) {
-	    std::shared_ptr< GeographicalArea > geographical_area = nullptr;
-	    std::shared_ptr< GeographicArea > recv_geo_area = geo_area.value();
-	    geographical_area.reset(new GeographicalArea(recv_geo_area));
+            std::shared_ptr< GeographicalArea > geographical_area = nullptr;
+            std::shared_ptr< GeographicArea > recv_geo_area = geo_area.value();
+            geographical_area.reset(new GeographicalArea(recv_geo_area));
 
             mb_smf_sc_geographic_area_t *geographic_area = geographical_area->populateGeographicArea();
             ogs_list_add(&ext_mbs_service_area->geographic_areas, geographic_area);

@@ -88,7 +88,7 @@ CJson QoSReq::json(bool as_request = false) const
 }
 
 mb_smf_sc_mbs_qos_req_t *QoSReq::populateQoSReq() {
-    
+
     std::shared_ptr<AllocationRetentionPriority> alloc_retention_priority = nullptr;
     mb_smf_sc_mbs_qos_req_t *qos_req = mb_smf_sc_mbs_qos_req_new();
     qos_req->five_qi = getQosReqR5qi();
@@ -98,7 +98,7 @@ mb_smf_sc_mbs_qos_req_t *QoSReq::populateQoSReq() {
     const std::optional<std::shared_ptr< Arp > > &arp = getReqMbsArp();
     if(arp.has_value()) {
         alloc_retention_priority.reset(new AllocationRetentionPriority(arp.value()));
-	qos_req->req_mbs_arp =  alloc_retention_priority->populateArp();
+        qos_req->req_mbs_arp =  alloc_retention_priority->populateArp();
     } else {
         qos_req->req_mbs_arp = nullptr;
     }
@@ -106,10 +106,10 @@ mb_smf_sc_mbs_qos_req_t *QoSReq::populateQoSReq() {
 }
 
 uint64_t *QoSReq::bitrate(const std::optional<std::string > &bit_rate) {
-    
+
     if (!bit_rate.has_value()) return nullptr;
     std::string br = bit_rate.value();
-    
+
     // Trim leading/trailing spaces
     br.erase(0, br.find_first_not_of(" \t"));
     br.erase(br.find_last_not_of(" \t") + 1);

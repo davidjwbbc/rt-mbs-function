@@ -50,7 +50,7 @@ using reftools::mbsf::DistSessionState;
 
 MBSF_NAMESPACE_START
 
-using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;   
+using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;
 using ActPeriodsType = MBSUserDataIngSession::ActPeriodsType;
 
 static std::optional<std::chrono::system_clock::time_point> parse_date_time(const std::string& date_time);
@@ -79,18 +79,18 @@ const DistSessionState &ActivePeriods::currentState(const MbsDistSessStateType &
 
         if (start <= now) {
             dist_session_state = DistSessionState::VAL_ACTIVE;
-	    return dist_session_state;
+            return dist_session_state;
         }
 
         // start > now
         auto pre_establish_time = start - establish_pre_start_seconds;
         if (pre_establish_time <= now) {
             dist_session_state = DistSessionState::VAL_ESTABLISHED;
-	    return dist_session_state;
+            return dist_session_state;
         } else {
-	    
+
             dist_session_state = DistSessionState::VAL_INACTIVE;
-	    return dist_session_state;
+            return dist_session_state;
         }
 
 
@@ -104,30 +104,30 @@ TimestampAndActiveFlag ActivePeriods::nextTransition () const
     std::chrono::seconds establish_pre_start_seconds{App::self().context()->actPeriodEstablishedStateDuration};
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     static DistSessionState dist_session_state;
-    
+
     // Evaluate first window with end > now
     for (auto &tw : m_actPeriodsTP) {
         const auto& start = tw.first;
         const auto& end = tw.second;
 
         if (end <= now) continue; // already finished window
-	
+
         if (start <= now) {
-	    dist_session_state = DistSessionState::VAL_INACTIVE;
+            dist_session_state = DistSessionState::VAL_INACTIVE;
             return {end, dist_session_state};
         }
 
         // start > now
         auto pre_establish_time = start - establish_pre_start_seconds;
         if (pre_establish_time <= now) {
-	    
-	    dist_session_state = DistSessionState::VAL_ACTIVE;
-	    return {start, dist_session_state};
+
+            dist_session_state = DistSessionState::VAL_ACTIVE;
+            return {start, dist_session_state};
         } else {
 
-	    dist_session_state = DistSessionState::VAL_ESTABLISHED;
-	    return {pre_establish_time, dist_session_state};
-        } 
+            dist_session_state = DistSessionState::VAL_ESTABLISHED;
+            return {pre_establish_time, dist_session_state};
+        }
 
     }
     dist_session_state = DistSessionState::VAL_INACTIVE;
@@ -155,10 +155,10 @@ static void convert_act_periods(const ActPeriodsType& act_periods, std::list<Act
 
         std::optional<std::chrono::system_clock::time_point> start_time = parse_date_time(time_win->getStartTime());
         std::optional<std::chrono::system_clock::time_point> stop_time = parse_date_time(time_win->getStopTime());
-        
-	if(!start_time.has_value() || !stop_time.has_value()) continue;
 
-	if (start_time.has_value() && stop_time.has_value()) {
+        if(!start_time.has_value() || !stop_time.has_value()) continue;
+
+        if (start_time.has_value() && stop_time.has_value()) {
             act_periods_tp.emplace_back(std::make_pair(start_time.value(), stop_time.value()));
         }
     }

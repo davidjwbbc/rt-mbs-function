@@ -73,7 +73,7 @@ CJson ServiceArea::json(bool as_request = false) const
 }
 
 mb_smf_sc_mbs_service_area_t *ServiceArea::populateServiceArea() {
-    
+
 
     mb_smf_sc_mbs_service_area_t *mbs_service_area = mb_smf_sc_mbs_service_area_new();
     ncgiTais(mbs_service_area);
@@ -82,18 +82,18 @@ mb_smf_sc_mbs_service_area_t *ServiceArea::populateServiceArea() {
 }
 
 void ServiceArea::ncgiTais(mb_smf_sc_mbs_service_area_t *mbs_service_area) {
-    
+
     //std::optional<std::list<std::optional<std::shared_ptr< NcgiTai > >
-    const reftools::mbsf::MbsServiceArea::NcgiListType &ncgi_tais = getNcgiList(); 
+    const reftools::mbsf::MbsServiceArea::NcgiListType &ncgi_tais = getNcgiList();
     if(!ncgi_tais.has_value()) return;
 
     ogs_list_init(&mbs_service_area->ncgi_tais);
 
     for(const auto &ncgi_tai: ncgi_tais.value()) {
         if(ncgi_tai.has_value()) {
-	    std::shared_ptr< MBSNcgiTai > mbs_ncgi_tai = nullptr;
-	    std::shared_ptr< NcgiTai > recv_ncgi_tai = ncgi_tai.value();
-	    mbs_ncgi_tai.reset(new MBSNcgiTai(recv_ncgi_tai));
+            std::shared_ptr< MBSNcgiTai > mbs_ncgi_tai = nullptr;
+            std::shared_ptr< NcgiTai > recv_ncgi_tai = ncgi_tai.value();
+            mbs_ncgi_tai.reset(new MBSNcgiTai(recv_ncgi_tai));
             mb_smf_sc_ncgi_tai_t *mb_smf_ncgi_tai = mbs_ncgi_tai->populateNcgiTai();
             ogs_list_add(&mbs_service_area->ncgi_tais, mb_smf_ncgi_tai);
         }

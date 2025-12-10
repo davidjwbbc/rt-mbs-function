@@ -56,7 +56,7 @@ MBSMFMBSSession::~MBSMFMBSSession()
 void MBSMFMBSSession::deleteSession()
 {
     mb_smf_sc_mbs_session_delete(m_session);
-    mb_smf_sc_mbs_session_push_changes(m_session);	
+    mb_smf_sc_mbs_session_push_changes(m_session);
 }
 
 const char *MBSMFMBSSession::tmgi() {
@@ -77,7 +77,7 @@ MBSMFMBSSession &MBSMFMBSSession::setSession(mb_smf_sc_mbs_session_t *session)
 MBSMFMBSSession &MBSMFMBSSession::setServiceInfo(std::shared_ptr< MbsServiceInfo > mbs_service_info)
 {
     ServiceInfo service_info(mbs_service_info);
-    m_session->mbs_service_info = service_info.populateServiceInfo(); 
+    m_session->mbs_service_info = service_info.populateServiceInfo();
     ogs_assert(m_session->mbs_service_info);
     return *this;
 
@@ -137,8 +137,8 @@ bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
                             mb_smf_sc_tmgi_t *tmgi = mbsf_event->mbs_session->tmgi;
 
                             UserDataIngSession::tmgi(tmgi, event->sbi.data);
-                        
-			} else {
+
+                        } else {
                             ogs_error("TMGI request failed");
                         }
                     }
@@ -161,30 +161,30 @@ bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
                             ogs_error("UDP tunnel request failed");
                         }
                     }
-		    UserDataIngSession::setMBSSessionFlag(event->sbi.data);
+                    UserDataIngSession::setMBSSessionFlag(event->sbi.data);
                 } else if (mbsf_event->result == OGS_ERROR) {
                       if (mbsf_event->problem_details) {
 
                           cJSON *problem = OpenAPI_problem_details_convertToJSON((OpenAPI_problem_details_t*)mbsf_event->problem_details);
-		          CJson problem_detail(problem, true);
+                          CJson problem_detail(problem, true);
                           {
                               char *txt = cJSON_Print(problem);
-			  }
+                          }
                           if(mbsf_event->problem_details->cause) {
                               std::optional<fiveg_mag_reftools::ProblemCause> cause = MBSProblemCause::lookup(std::string(mbsf_event->problem_details->cause));
                               if(cause.has_value()) {
-				  {   
-				      fiveg_mag_reftools::ProblemCause &cause_val = cause.value();
-			              int status_code = cause_val.statusCode();
-			              const std::string &reason = cause_val.reason();
-			              const std::string &cause_str = cause_val.cause();
-				  }
+                                  {
+                                      fiveg_mag_reftools::ProblemCause &cause_val = cause.value();
+                                      int status_code = cause_val.statusCode();
+                                      const std::string &reason = cause_val.reason();
+                                      const std::string &cause_str = cause_val.cause();
+                                  }
                                   //UserDataIngSession::handleMBSSessionError(event->sbi.data, cause.value(), problem_detail);
-				  UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, cause.value(), problem_detail);
+                                  UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, cause.value(), problem_detail);
                                   return true;
                               }
                          } else {
-			    UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR, problem_detail);
+                            UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR, problem_detail);
                          }
                          return true;
                     }
@@ -245,7 +245,7 @@ MBSMFMBSSession &MBSMFMBSSession::setServiceType(mb_smf_sc_mbs_service_type_e se
 
 MBSMFMBSSession &MBSMFMBSSession::setTunnelRequest(bool request_udp_tunnel)
 {
-    
+
     //mb_smf_sc_mbs_session_set_tunnel_request(m_session, request_udp_tunnel);
     m_session->tunnel_req = request_udp_tunnel;
     return *this;
@@ -283,7 +283,7 @@ MBSMFMBSSession &MBSMFMBSSession::setTmgiRequest(bool tmgi_req)
 
  MBSMFMBSSession &MBSMFMBSSession::setActivityStatus(mb_smf_sc_activity_status_e activity_status)
 {
-    m_session->activity_status = activity_status;    
+    m_session->activity_status = activity_status;
     return *this;
 }
 

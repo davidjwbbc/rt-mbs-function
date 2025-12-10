@@ -69,7 +69,7 @@ CJson MBSNcgi::json(bool as_request = false) const
 }
 
 mb_smf_sc_ncgi_t *MBSNcgi::populateNcgi() {
-    
+
     std::shared_ptr< MBSPlmnId > mbs_plmn_id = nullptr;
     uint16_t mcc;
     uint16_t mnc;
@@ -78,7 +78,7 @@ mb_smf_sc_ncgi_t *MBSNcgi::populateNcgi() {
     mbs_plmn_id.reset(new MBSPlmnId(plmn_id));
     mcc = mbs_plmn_id->mcc();
     mnc = mbs_plmn_id->mnc();
-    
+
     mb_smf_sc_ncgi_t *ncgi = mb_smf_sc_ncgi_new();
 
     mb_smf_sc_ncgi_set_plmn_id(ncgi, mcc, mnc);
@@ -86,7 +86,7 @@ mb_smf_sc_ncgi_t *MBSNcgi::populateNcgi() {
     ncgi->nr_cell_id = static_cast<uint64_t>(cell_id) & ((1ULL << 36) - 1);
     ncgi->nid = nid();
     return ncgi;
-    
+
 }
 
 uint64_t MBSNcgi::nrCellId() {

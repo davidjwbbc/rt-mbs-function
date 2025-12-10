@@ -50,7 +50,7 @@ using DistSessionState = ActivePeriodsBase::DistSessionState;
 using ActPeriodsType = reftools::mbsf::MBSUserDataIngSession::ActPeriodsType;
 using MbsDistSessStateType = reftools::mbsf::MBSDistributionSessionInfo::MbsDistSessStateType;
 
-using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;   
+using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;
 
 const DistSessionState &AlwaysActive::currentState(const MbsDistSessStateType &dist_session_state) const
 {
@@ -60,7 +60,7 @@ const DistSessionState &AlwaysActive::currentState(const MbsDistSessStateType &d
 }
 
 TimestampAndActiveFlag AlwaysActive::nextTransition() const {
-    static const DistSessionState empty;	
+    static const DistSessionState empty;
     return {std::nullopt, empty};
 }
 

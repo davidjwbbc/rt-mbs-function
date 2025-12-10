@@ -50,7 +50,7 @@ using reftools::mbsf::DistSessionState;
 
 MBSF_NAMESPACE_START
 
-using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;   
+using TimestampAndActiveFlag = ActivePeriodsBase::TimestampAndActiveFlag;
 using ActPeriodsRepRuleType = MBSUserDataIngSession::ActPeriodsRepRuleType;
 
 static std::optional<std::chrono::system_clock::time_point> parse_date_time(const std::string& date_time);
@@ -72,13 +72,13 @@ const DistSessionState &ActivePeriodsRepRule::currentState(const MbsDistSessStat
     std::optional<std::chrono::system_clock::time_point> start = parse_date_time(m_repetitionRule->getStartTime());
     int32_t duration = m_repetitionRule->getDuration();
     int32_t repetition_interval = m_repetitionRule->getRepetitionInterval();
- 
+
     std::chrono::seconds dur{duration};
-    std::chrono::seconds rep_interval{repetition_interval}; 
+    std::chrono::seconds rep_interval{repetition_interval};
 
     if(!start.has_value()) {
-	    
-	ogs_info("REP RULE START TIME HAS NO VAL");
+
+        ogs_info("REP RULE START TIME HAS NO VAL");
          dist_session_state = DistSessionState::NO_VAL;
          return dist_session_state;
     }
@@ -87,14 +87,14 @@ const DistSessionState &ActivePeriodsRepRule::currentState(const MbsDistSessStat
     auto diff = now - start.value();
 
     if (diff < -establish_pre_start_seconds) {
-	dist_session_state = DistSessionState::VAL_INACTIVE;
-        return dist_session_state;    
+        dist_session_state = DistSessionState::VAL_INACTIVE;
+        return dist_session_state;
     } else if (diff < std::chrono::milliseconds::zero()) {
         dist_session_state = DistSessionState::VAL_ESTABLISHED;
         return dist_session_state;
     } else {
 
-	auto offset = std::chrono::duration_cast<std::chrono::seconds>(diff % rep_interval);
+        auto offset = std::chrono::duration_cast<std::chrono::seconds>(diff % rep_interval);
         auto active_start = now - offset;
 
         if (offset < dur) {
@@ -102,12 +102,12 @@ const DistSessionState &ActivePeriodsRepRule::currentState(const MbsDistSessStat
             return dist_session_state;
         } else if (offset < rep_interval - establish_pre_start_seconds) {
             dist_session_state = DistSessionState::VAL_INACTIVE;
-            return dist_session_state; 
+            return dist_session_state;
         } else {
             dist_session_state = DistSessionState::VAL_ESTABLISHED;
             return dist_session_state;
         }
-	dist_session_state = DistSessionState::VAL_INACTIVE;
+        dist_session_state = DistSessionState::VAL_INACTIVE;
         return dist_session_state;
 
 
@@ -133,9 +133,9 @@ TimestampAndActiveFlag ActivePeriodsRepRule::nextTransition () const
 
     if(!start.has_value()) {
          dist_session_state = DistSessionState::NO_VAL;
-	 return {std::nullopt, dist_session_state};
+         return {std::nullopt, dist_session_state};
     }
-    
+
     // Calculate time difference from the rule's start
     auto diff = now - start.value();
 
@@ -155,7 +155,7 @@ TimestampAndActiveFlag ActivePeriodsRepRule::nextTransition () const
             dist_session_state = DistSessionState::VAL_INACTIVE;
             return {(active_start + dur), dist_session_state};
         } else if (offset < (rep_interval - establish_pre_start_seconds)) {
-	    dist_session_state = DistSessionState::VAL_ESTABLISHED;
+            dist_session_state = DistSessionState::VAL_ESTABLISHED;
             return {active_start + rep_interval - establish_pre_start_seconds, dist_session_state};
         } else {
             dist_session_state = DistSessionState::VAL_ACTIVE;
@@ -191,15 +191,15 @@ static std::optional<std::chrono::system_clock::time_point> parse_date_time(cons
     std::istringstream ss(main_time);
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     if (ss.fail()) {
-	ogs_info("PARSE TIME SS FAIL");
+        ogs_info("PARSE TIME SS FAIL");
         return std::nullopt;
     }
 
     std::time_t time = std::mktime(&tm);
     if (time == -1) {
 
-	ogs_info("PARSE TIME MKTIME RETURNS -1");
-	return std::nullopt;
+        ogs_info("PARSE TIME MKTIME RETURNS -1");
+        return std::nullopt;
     }
 
     auto tp = std::chrono::system_clock::from_time_t(time);
