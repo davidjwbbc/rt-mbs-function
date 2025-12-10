@@ -1,4 +1,5 @@
 freeDiameter/
 open5gs/
 prometheus-client-c/
+rt-5gc-service-consumers/
 !packagefiles/*
