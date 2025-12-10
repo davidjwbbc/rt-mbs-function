@@ -1,5 +1,5 @@
 #ifndef _MBSF_ALWAYS_ACTIVE_HH_
-#define _MBSF_ALWAYS_ACTIVE_HH
+#define _MBSF_ALWAYS_ACTIVE_HH_
 /******************************************************************************
  * 5G-MAG Reference Tools: MBS Function: MBS AlwaysActive class
  ******************************************************************************
@@ -68,4 +68,4 @@ MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBSF_ALWAYS_ACTIVE_HH */
+#endif /* _MBSF_ALWAYS_ACTIVE_HH_ */
