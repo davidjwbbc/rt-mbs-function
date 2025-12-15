@@ -1,5 +1,5 @@
 {
-  "mbsUserServId": "ca61d38c-d4e8-41f0-b26a-0dedac3f4b40",
+  "mbsUserServId": "4123fad0-d6c0-41f0-9d8a-ff682ae87547",
   "mbsDisSessInfos": {
     "AP_MBS_SESSION_1": {
       "mbsSessionId": {
@@ -14,6 +14,7 @@
       },
       "mbsDistSessState": "INACTIVE",
       "maxContBitRate": "10 Mbps",
+      "mbsFSAId": "3F9B8A",
       "distrMethod": "OBJECT",
       "objDistrInfo": {
         "operatingMode": "STREAMING",
@@ -21,20 +22,7 @@
         "objIngUri": "http://media-origin-server:8080/",
         "objAcqIds": ["pc_hd_abr_v2_http.mpd"],
         "objDistUri": "http://localhost:8081/"
-      },
-      "tgtServAreas": {
-        "taiList": [
-          {
-            "plmnId": {
-              "mcc": "310",
-              "mnc": "260"
-            },
-            "tac": "00A1"
-          }
-        ]
-      },
-      "afAppId": "example.af.app.id",
-      "mbsSessionAmbr": "20000 bps"
+      }
     }
   }
 }

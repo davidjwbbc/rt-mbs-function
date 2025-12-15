@@ -1,0 +1,79 @@
+{
+  "mbsUserServId": "59d8ff20-d5b3-41f0-b159-23436bc52ed4",
+  "mbsDisSessInfos": {
+    "AP_MBS_SESSION_1": {
+      "mbsSessionId": {
+        "ssm": {
+          "sourceIpAddr": {
+            "ipv4Addr": "127.0.0.5"
+          },
+          "destIpAddr": {
+            "ipv4Addr": "232.10.0.5"
+          }
+        }
+      },
+      "mbsDistSessState": "INACTIVE",
+      "maxContBitRate": "10 Mbps",
+      "distrMethod": "OBJECT",
+      "objDistrInfo": {
+        "operatingMode": "STREAMING",
+        "objAcqMethod": "PULL",
+        "objIngUri": "http://media-origin-server:8080/",
+        "objAcqIds": [
+          "pc_hd_abr_v2_http.mpd"
+        ],
+        "objDistUri": "http://localhost:8081/"
+      },
+      "tgtServAreas": {
+	 "taiList": [
+          {
+            "plmnId": {
+              "mcc": "310",
+              "mnc": "260"
+            },
+            "tac": "00A2"
+          },
+          {
+            "plmnId": {
+              "mcc": "234",
+              "mnc": "15"
+            },
+            "tac": "00A2"
+          }
+        ],
+        "ncgiList": [
+          {
+            "cellList": [
+              {
+                "plmnId": {
+                  "mcc": "320",
+                  "mnc": "270"
+                },
+                "nrCellId": "ABCDEF120",
+		"nid": "A1B2C3D4E5F"
+              },
+	      {
+                "plmnId": {
+                  "mcc": "330",
+                  "mnc": "280"
+                },
+                "nrCellId": "ABCDEF130"
+              }
+
+            ],
+            "tai": {
+              "plmnId": {
+                "mcc": "310",
+                "mnc": "260"
+              },
+              "tac": "00A1"
+            }
+	  } 
+	]
+      },
+      "afAppId": "example.af.app.id",
+      "mbsSessionAmbr": "20000 bps"
+    }
+  }
+}
+

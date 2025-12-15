@@ -1,0 +1,32 @@
+{
+  "mbsUserServId": "078dfdf6-d694-41f0-8bbf-7da70d33dfc9",
+  "mbsDisSessInfos": {
+    "AP_MBS_SESSION_1": {
+      "mbsSessionId": {
+        "ssm": {
+          "sourceIpAddr": {
+            "ipv4Addr": "127.0.0.5"
+          },
+          "destIpAddr": {
+            "ipv4Addr": "232.10.0.5"
+          }
+        }
+      },
+      "fecConfig": {
+        "fecScheme": "RaptorQ",
+	"fecOverHead": 20
+      },
+      "mbsDistSessState": "INACTIVE",
+      "maxContBitRate": "10 Mbps",
+      "distrMethod": "OBJECT",
+      "objDistrInfo": {
+        "operatingMode": "STREAMING",
+        "objAcqMethod": "PULL",
+        "objIngUri": "http://media-origin-server:8080/",
+        "objAcqIds": ["pc_hd_abr_v2_http.mpd"],
+        "objDistUri": "http://localhost:8081/"
+      }
+    }
+  }
+}
+
