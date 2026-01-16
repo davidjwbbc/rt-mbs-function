@@ -23,6 +23,8 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include "mb-smf-service-consumer.h"
+
 #include <any>
 #include <chrono>
 #include <memory>
@@ -85,10 +87,11 @@ public:
     //Pair containing Distribution Session ID sent to the MBSTF and the above UserDataIngDistSessId
     using SessionIdContainer = std::pair<std::string, std::shared_ptr< UserDataIngDistSessId >>;
 
-     enum class MBSSessionState {
+    enum class MBSSessionState {
         NO = 0,       // no session
-        CREATED = 1,  // session successfully created
-        FAILED    // session creation failed
+        CREATED,      // session successfully created
+        DELETED,      // session successfully deleted
+        FAILED        // session creation failed
     };
 
     struct ContextData {
@@ -102,7 +105,7 @@ public:
         std::shared_ptr<MBSMFMBSSession> MBSSession = nullptr;
         MBSSessionState MBSSessionStatus = MBSSessionState::NO;
         std::optional<fiveg_mag_reftools::ProblemCause> mbsmfProblemCause = std::nullopt;
-               std::optional<CJson> mbsmfProblemDetailJson = std::nullopt;
+        std::optional<CJson> mbsmfProblemDetailJson = std::nullopt;
         bool receivedMBSTFResponse = false;
         bool receivedMBSTFPatchResponse = false;
         bool patchUpdateSucceded = false;
@@ -115,9 +118,8 @@ public:
         std::string mbstfDistSessionId;
         bool distSessionState;
         mb_smf_sc_tmgi_t *tmgi = nullptr;
-
-
     };
+
     UserDataIngSession(CJson &json, bool as_request);
     UserDataIngSession(const std::shared_ptr<MBSUserDataIngSession> &mbs_user_service);
     UserDataIngSession() = delete;
@@ -195,6 +197,7 @@ public:
 
     bool checkIfAllMBSTFDistSessionDeleted();
     bool checkIfAllMBSSessionCreated();
+    bool checkIfAllMBSSessionDeletionsReceived();
     bool checkIfAllMBSTFResponsesReceived();
     bool resetReceivedMBSTFResponseFlags();
     bool checkIfAllMBSTFPatchResponsesReceived();
@@ -205,6 +208,7 @@ public:
 
     static std::shared_ptr< UserDataIngSession::ContextData > setDistSessionId(std::shared_ptr< UserDataIngSession::ContextData > context_data, std::string dist_session_id);
     static void setMBSSessionFlag(void *data);
+    static void setMBSSessionDeleted(void *data);
     static void setMBSTFDistSessionDeletedFlag(std::string &dist_session_id);
     static bool processEvent(Open5GSEvent &event);
     static bool handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact);
@@ -231,6 +235,7 @@ public:
     void handleFailedMBSSession();
     void setMbstfsInDesiredState();
     void checkDesiredState();
+    void pendingDeleteResponse(ogs_pool_id_t stream_id);
 
     static void changeDistSessionState(void *data);
     static void currentDistSessionState(void *data);
@@ -257,11 +262,13 @@ public:
     static void removeXact(ogs_sbi_xact_t* xact);
     static int numberOfDistributionSessions();
 
-    static std::recursive_mutex m_mutex;
-    static std::map<ogs_sbi_xact_t *, std::shared_ptr< UserDataIngDistSessId >> m_xactRegistry;
-    static std::map<std::string, std::shared_ptr< UserDataIngDistSessId >> s_distSessionIdRegistry;
+    static void clearRegistries() { std::lock_guard<std::recursive_mutex> lock(s_registry_mutex); s_xactRegistry.clear(); s_distSessionIdRegistry.clear(); };
 
 private:
+    static std::recursive_mutex s_registry_mutex;
+    static std::map<ogs_sbi_xact_t *, std::shared_ptr< UserDataIngDistSessId >> s_xactRegistry;
+    static std::map<std::string, std::shared_ptr< UserDataIngDistSessId >> s_distSessionIdRegistry;
+
     std::shared_ptr<MBSUserDataIngSession> m_MBSUserDataIngSession;
     std::unique_ptr<Open5GSSBIObject> m_sbiObject;
     SysTimeMS m_generated;
@@ -280,7 +287,10 @@ private:
 
     //key: Dist Session Infos present in this User Data Ingest Session
     std::map<std::string, std::shared_ptr< ContextData >> m_distributionSessionInfos;
+    std::recursive_mutex m_distSessInfosMutex;
 
+    std::recursive_mutex m_deleteRequestsMutex;
+    std::list<ogs_pool_id_t> m_deleteRequests;
 };
 
 MBSF_NAMESPACE_STOP

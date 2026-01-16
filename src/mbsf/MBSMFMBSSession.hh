@@ -69,6 +69,7 @@ public:
         MBSF_LOCAL_EVENT_NONE = 0,
         MBSF_LOCAL_EVENT_MBS_SESSION_CREATE,
         MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT,
+        MBSF_LOCAL_EVENT_MBS_SESSION_DELETED,
         MBSF_LOCAL_EVENT_MAX
     };
 
@@ -79,8 +80,6 @@ public:
         const OpenAPI_problem_details_s*  problem_details;
         int result;
     };
-
-    LocalEvent localEvent;
 
     static bool processEvent(Open5GSEvent &event);
 
@@ -101,12 +100,10 @@ public:
     void deleteSession();
 
     void pushChanges();
-    static void mbsSessionCreatedCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data);
-    static void sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data);
 
-    mb_smf_sc_mbs_session_t *mbsmfMBSSession() { return m_session; };
-    ogs_sockaddr_t *tunnelAddr() {return m_session->mb_upf_udp_tunnel;};
-    mb_smf_sc_ssm_addr_t *ssm() { return m_session->ssm;};
+    mb_smf_sc_mbs_session_t *mbsmfMBSSession() const { return m_session; };
+    ogs_sockaddr_t *tunnelAddr() const { return m_session?m_session->mb_upf_udp_tunnel:nullptr; };
+    mb_smf_sc_ssm_addr_t *ssm() const { return m_session?m_session->ssm:nullptr; };
     const char *tmgi();
 
     operator bool() const { return !!m_session; };
@@ -114,6 +111,9 @@ public:
     static const char *mbsfLocalGetName(LocalEvent *mbsf_event);
 
 private:
+    static void mbsSessionCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data);
+    static void sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data);
+
     mb_smf_sc_mbs_session_t *m_session;
 
 };

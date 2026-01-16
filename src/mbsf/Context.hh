@@ -21,14 +21,14 @@
 
 #include <map>
 #include <memory>
-#include <vector>
+#include <mutex>
 #include <optional>
+#include <vector>
 
 #include "ogs-sbi.h"
 #include "ogs-app.h"
 
 #include "common.hh"
-#include "MBSMFMBSSession.hh"
 
 MBSF_NAMESPACE_START
 
@@ -58,8 +58,7 @@ public:
     void deleteUserService(const std::string &userServiceId);
     void addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &userIngSession);
     void deleteUserDataIngSession(const std::string &userIngSessionId);
-    void addMbSmfMbsSession(const std::shared_ptr<MBSMFMBSSession> &session);
-    void deleteMbSmfMbsSession(const mb_smf_sc_ssm_addr_t *ssm);
+    const std::shared_ptr<UserDataIngSession> &findUserDataIngSession(const std::string &id);
     int load();
 
     enum ServerType {
@@ -70,8 +69,6 @@ public:
     };
 
     std::map<std::string, std::shared_ptr<UserService> > UserServices;
-    std::map<std::string, std::shared_ptr<UserDataIngSession> > UserDataIngSessions;
-    std::map<const mb_smf_sc_ssm_addr_t *, std::shared_ptr<MBSMFMBSSession> > MBSMFMBSSessions;
 
     std::vector<std::shared_ptr<Open5GSSBIServer> > servers[SERVER_MAX_NUM];
 
@@ -96,6 +93,8 @@ private:
     void parseConfiguration(std::string &pc_key, Open5GSYamlIter &iter);
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(ogs_socknode_t *node);
 
+    std::recursive_mutex m_userDataIngSessMutex;
+    std::map<std::string, std::shared_ptr<UserDataIngSession> > m_userDataIngSessions;
 };
 
 MBSF_NAMESPACE_STOP

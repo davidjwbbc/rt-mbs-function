@@ -45,6 +45,8 @@ Context::Context()
     ,cacheControl({60, 60, 60})
     ,capacity({100,100})
     ,allowedMulticastRange()
+    ,m_userDataIngSessMutex()
+    ,m_userDataIngSessions()
 {
 }
 
@@ -55,9 +57,7 @@ Context::~Context()
             svr.reset();
         }
     }
-    UserDataIngSession::m_xactRegistry.clear();
-    UserDataIngSession::s_distSessionIdRegistry.clear();
-
+    UserDataIngSession::clearRegistries();
 }
 
 bool Context::parseConfig()
@@ -149,37 +149,32 @@ void Context::deleteUserService(const std::string &id)
 
 void Context::addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &session)
 {
-    std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
     std::shared_ptr<UserDataIngSession> map_session(session);
-    UserDataIngSessions.insert(std::make_pair<std::string, std::shared_ptr<UserDataIngSession> >(std::string(map_session->userDataIngSessionId()), std::move(map_session)));
+    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    m_userDataIngSessions.insert(std::make_pair<std::string, std::shared_ptr<UserDataIngSession> >(std::string(map_session->userDataIngSessionId()), std::move(map_session)));
 }
 
 
 void Context::deleteUserDataIngSession(const std::string &id)
 {
-    std::lock_guard<std::recursive_mutex> lock(UserDataIngSession::m_mutex);
-    auto it = UserDataIngSessions.find(id);
-    if (it != UserDataIngSessions.end()) {
-        UserDataIngSessions.erase(it);
+    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    auto it = m_userDataIngSessions.find(id);
+    if (it != m_userDataIngSessions.end()) {
+        m_userDataIngSessions.erase(it);
     } else {
         throw std::out_of_range("MBSF: User Ingest Session to be deleted is not found");
     }
 }
 
-void Context::addMbSmfMbsSession(const std::shared_ptr<MBSMFMBSSession> &session)
+const std::shared_ptr<UserDataIngSession> &Context::findUserDataIngSession(const std::string &id)
 {
-    std::shared_ptr<MBSMFMBSSession> map_session(session);
-    MBSMFMBSSessions.insert(std::make_pair<mb_smf_sc_ssm_addr_t *, std::shared_ptr<MBSMFMBSSession> >(map_session->ssm(), std::move(map_session)));
-}
-
-void Context::deleteMbSmfMbsSession(const mb_smf_sc_ssm_addr_t *ssm)
-{
-    auto it = MBSMFMBSSessions.find(ssm);
-    if (it != MBSMFMBSSessions.end()) {
-        MBSMFMBSSessions.erase(it);
-    } else {
-        throw std::out_of_range("MBSF: MB-SMF session to delete is not found");
+    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    auto it = m_userDataIngSessions.find(id);
+    if (it != m_userDataIngSessions.end()) {
+        return it->second;
     }
+    static const std::shared_ptr<UserDataIngSession> null_udis(nullptr);
+    return null_udis;
 }
 
 void Context::parseCacheControl(Open5GSYamlIter &iter) {
@@ -375,8 +370,7 @@ const std::shared_ptr<Open5GSSBIServer> &Context::findServerForAddr(ogs_socknode
 {
     int i = 0;
     for (i=0; i<SERVER_MAX_NUM; i++) {
-        std::vector<std::shared_ptr<Open5GSSBIServer>> srvs = servers[i];
-        for (const auto &srv: srvs) {
+        for (const auto &srv : servers[i]) {
             if (srv && ogs_sockaddr_is_equal(node->addr, srv->ogsSBIServer()->node.addr)) {
                 return srv;
             }

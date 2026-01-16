@@ -89,6 +89,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
                     break;
                 }
                 std::string resource(message.resourceComponent(0));
+                message.parseRequest(request);
                 if (resource == OGS_SBI_RESOURCE_NAME_NF_STATUS_NOTIFY) {
                     std::string method(message.method());
                     if (method == OGS_SBI_HTTP_METHOD_POST) {
@@ -169,6 +170,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
 
             } else if (service_name == OGS_SBI_SERVICE_NAME_NNRF_NFM) {
                 std::string resource(message.resourceComponent(0));
+                message.parseResponse(response);
                 if (resource == OGS_SBI_RESOURCE_NAME_NF_INSTANCES) {
                     cJSON *nf_profile;
                     OpenAPI_nf_profile_t *nfprofile;

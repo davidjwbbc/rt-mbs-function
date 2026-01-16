@@ -42,11 +42,11 @@ public:
             throw std::runtime_error("ogs_sbi_stream_find_by_id() failed");
         }
     };
-    Open5GSSBIStream() = delete;
-    Open5GSSBIStream(Open5GSSBIStream &&other) = delete;
-    Open5GSSBIStream(const Open5GSSBIStream &other) = delete;
-    Open5GSSBIStream &operator=(Open5GSSBIStream &&other) = delete;
-    Open5GSSBIStream &operator=(const Open5GSSBIStream &other) = delete;
+    Open5GSSBIStream() :m_stream(nullptr) {};
+    Open5GSSBIStream(Open5GSSBIStream &&other) :m_stream(other.m_stream) {};
+    Open5GSSBIStream(const Open5GSSBIStream &other) :m_stream(other.m_stream) {};
+    Open5GSSBIStream &operator=(Open5GSSBIStream &&other) { m_stream = other.m_stream; return *this; };
+    Open5GSSBIStream &operator=(const Open5GSSBIStream &other) { m_stream = other.m_stream; return *this; };
     virtual ~Open5GSSBIStream() {};
 
     ogs_sbi_stream_t *ogsSBIStream() { return m_stream; };

@@ -50,13 +50,16 @@ MBSMFMBSSession::MBSMFMBSSession(mb_smf_sc_mbs_session_t *session)
 
 MBSMFMBSSession::~MBSMFMBSSession()
 {
-    //deleteSession();
+    deleteSession();
 }
 
 void MBSMFMBSSession::deleteSession()
 {
-    mb_smf_sc_mbs_session_delete(m_session);
-    mb_smf_sc_mbs_session_push_changes(m_session);
+    if (m_session) {
+        mb_smf_sc_mbs_session_delete(m_session);
+        mb_smf_sc_mbs_session_push_changes(m_session);
+        m_session = nullptr;
+    }
 }
 
 const char *MBSMFMBSSession::tmgi() {
@@ -177,21 +180,19 @@ bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
                         }
                         return true;
                     }
-
-                    //UserDataIngSession::handleMBSSessionError(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
                     UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
-
                 } else {
                    UserDataIngSession::setMBSSessionFailureFlag(event->sbi.data, ProblemCause::INBOUND_SERVER_ERROR);
                 }
+                return true;
+            case MBSF_LOCAL_EVENT_MBS_SESSION_DELETED:
+                UserDataIngSession::setMBSSessionDeleted(event->sbi.data);
                 return true;
             default:
                 ogs_warn("Unexpected local event: %s", mbsfEventGetName(event));
                 return true;
             }
-
         }
-
     }
     return false;
 }
@@ -227,15 +228,12 @@ const char *MBSMFMBSSession::mbsfLocalGetName(LocalEvent *mbsf_event)
 
 MBSMFMBSSession &MBSMFMBSSession::setServiceType(mb_smf_sc_mbs_service_type_e service_type)
 {
-    //mb_smf_sc_mbs_session_set_service_type(m_session, service_type);
     m_session->service_type = service_type;
     return *this;
 }
 
 MBSMFMBSSession &MBSMFMBSSession::setTunnelRequest(bool request_udp_tunnel)
 {
-
-    //mb_smf_sc_mbs_session_set_tunnel_request(m_session, request_udp_tunnel);
     m_session->tunnel_req = request_udp_tunnel;
     return *this;
 }
@@ -245,20 +243,22 @@ void MBSMFMBSSession::pushChanges()
     mb_smf_sc_mbs_session_push_changes(m_session);
 }
 
-void MBSMFMBSSession::mbsSessionCreatedCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data)
+void MBSMFMBSSession::mbsSessionCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data)
 {
 
     /* callback for result of MBS Session create operation */
 
     /* queue result event */
-    sendLocalEvent(MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT, session, result, problem_details?OpenAPI_problem_details_copy(nullptr, const_cast<OpenAPI_problem_details_s *> (problem_details)):nullptr, data);
+    sendLocalEvent((result != OGS_DONE)?MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT:MBSF_LOCAL_EVENT_MBS_SESSION_DELETED,
+                   session, result,
+                   problem_details?OpenAPI_problem_details_copy(nullptr, const_cast<OpenAPI_problem_details_s*>(problem_details))
+                                  :nullptr,
+                   data);
 }
 
 MBSMFMBSSession &MBSMFMBSSession::setCreatedCallback(void *callback_data)
 {
-    mb_smf_sc_mbs_session_set_callback(m_session, mbsSessionCreatedCallback, callback_data);
-    //m_session->create_result_cb = mbsSessionCreatedCallback;
-    //m_session->create_result_cb_data = (void*)callback_data;
+    mb_smf_sc_mbs_session_set_callback(m_session, mbsSessionCallback, callback_data);
 
     return *this;
 }
@@ -270,7 +270,7 @@ MBSMFMBSSession &MBSMFMBSSession::setTmgiRequest(bool tmgi_req)
     return *this;
 }
 
- MBSMFMBSSession &MBSMFMBSSession::setActivityStatus(mb_smf_sc_activity_status_e activity_status)
+MBSMFMBSSession &MBSMFMBSSession::setActivityStatus(mb_smf_sc_activity_status_e activity_status)
 {
     m_session->activity_status = activity_status;
     return *this;
