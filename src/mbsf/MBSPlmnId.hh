@@ -42,8 +42,6 @@ using reftools::mbsf::PlmnId;
 
 MBSF_NAMESPACE_START
 
-class MBSMFMBSSession;
-
 class MBSPlmnId {
 public:
 

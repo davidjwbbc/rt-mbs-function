@@ -61,7 +61,6 @@ using reftools::mbsf::ReservPriority;
 
 MBSF_NAMESPACE_START
 
-class MBSMFMBSSession;
 class MediaInfo;
 class QoSReq;
 

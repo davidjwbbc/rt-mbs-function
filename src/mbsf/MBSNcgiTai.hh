@@ -45,8 +45,6 @@ using reftools::mbsf::Tai;
 
 MBSF_NAMESPACE_START
 
-class MBSMFMBSSession;
-
 class MBSNcgiTai {
 public:
 

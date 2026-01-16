@@ -23,6 +23,8 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include "mb-smf-service-consumer.h"
+
 #include <memory>
 #include <tuple>
 #include <mutex>
@@ -42,8 +44,6 @@ using reftools::mbsf::ExternalMbsServiceArea;
 using fiveg_mag_reftools::ModelException;
 
 MBSF_NAMESPACE_START
-
-class MBSMFMBSSession;
 
 class ExternalServiceArea {
 public:

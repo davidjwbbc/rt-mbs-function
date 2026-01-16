@@ -52,7 +52,6 @@ class Open5GSEvent;
 class Open5GSSBIRequest;
 class Open5GSSBIObject;
 class DistributionSession;
-class MBSMFMBSSession;
 
 class Nmb2Build {
 public:

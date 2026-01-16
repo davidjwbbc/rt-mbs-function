@@ -57,7 +57,6 @@ using reftools::mbsf::MbStfIngestAddr;
 
 MBSF_NAMESPACE_START
 
-class MBSMFMBSSession;
 class ServiceInfo;
 
 class DistributionSessionInfo {

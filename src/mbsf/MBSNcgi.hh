@@ -23,6 +23,8 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include "mb-smf-service-consumer.h"
+
 #include <memory>
 #include <tuple>
 #include <mutex>
@@ -43,8 +45,6 @@ using reftools::mbsf::Ncgi;
 using reftools::mbsf::PlmnId;
 
 MBSF_NAMESPACE_START
-
-class MBSMFMBSSession;
 
 class MBSNcgi {
 public:
