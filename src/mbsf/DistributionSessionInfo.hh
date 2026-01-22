@@ -23,48 +23,30 @@
 #include "ogs-proto.h"
 #include "ogs-sbi.h"
 
+#include <chrono>
 #include <memory>
-#include <tuple>
-#include <mutex>
+
 #include "openapi/model/MBSDistributionSessionInfo.h"
-#include "openapi/model/DistSession.h"
+#include "openapi/model/DistributionMethod.h"
+#include "openapi/model/MbsSessionId.h"
 #include "common.hh"
 
-namespace fiveg_mag_reftools {
-    class CJson;
-}
-
 namespace reftools::mbsf {
-    class MBSDistributionSessionInfo;
-    class DistSessionState;
+    class MbsServiceArea;
+    class ExternalMbsServiceArea;
 }
-
-using fiveg_mag_reftools::CJson;
-using reftools::mbsf::DistributionMethod;
-using reftools::mbsf::DistSessionState;
-using reftools::mbsf::DistSession;
-using reftools::mbsf::DistSessionState;
-using reftools::mbsf::MBSUserDataIngSession;
-using reftools::mbsf::MBSDistributionSessionInfo;
-using reftools::mbsf::MbsServiceInfo;
-using reftools::mbsf::Ssm;
-using reftools::mbsf::ObjDistributionOperatingMode;
-using reftools::mbsf::ObjAcquisitionMethod;
-using reftools::mbsf::PacketDistrMethInfo;
-using reftools::mbsf::PktDistributionOperatingMode;
-using reftools::mbsf::PktIngestMethod;
-using reftools::mbsf::MbStfIngestAddr;
 
 MBSF_NAMESPACE_START
 
 class ServiceInfo;
+class UniqueMbsSessionId;
 
 class DistributionSessionInfo {
 public:
     using SysTimeMS = std::chrono::system_clock::time_point;
 
-    DistributionSessionInfo(CJson &json, bool as_request);
-    DistributionSessionInfo(const std::shared_ptr<MBSDistributionSessionInfo> &mbs_distribution_session_info);
+    DistributionSessionInfo(fiveg_mag_reftools::CJson &json, bool as_request);
+    DistributionSessionInfo(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &mbs_distribution_session_info);
     DistributionSessionInfo() = delete;
     DistributionSessionInfo(DistributionSessionInfo &&other) = delete;
     DistributionSessionInfo(const DistributionSessionInfo &other) = delete;
@@ -73,14 +55,18 @@ public:
 
     virtual ~DistributionSessionInfo();
 
-    CJson json(bool as_request) const;
+    fiveg_mag_reftools::CJson json(bool as_request) const;
 
-    const std::shared_ptr<MBSDistributionSessionInfo> &getMBSDistributionSessionInfo() const {return m_mbsDistributionSessionInfo;};
-    std::shared_ptr<MBSDistributionSessionInfo> &updateMBSDistributionSessionInfo(std::shared_ptr<MBSDistributionSessionInfo> new_mbs_dist_session_infos);
-    const std::shared_ptr< DistributionMethod > &getDistributionMethod() const { return m_mbsDistributionSessionInfo->getDistrMethod();}; 
+    const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &getMBSDistributionSessionInfo() const {return m_mbsDistributionSessionInfo;};
+    std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &updateMBSDistributionSessionInfo(std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> new_mbs_dist_session_infos);
+    const std::shared_ptr<reftools::mbsf::DistributionMethod> &getDistributionMethod() const { return m_mbsDistributionSessionInfo->getDistrMethod();}; 
+    UniqueMbsSessionId getUniqueMbsSessionId() const;
+    std::shared_ptr<reftools::mbsf::MbsSessionId> getMbsSessionId() const;
+    std::shared_ptr<reftools::mbsf::MbsServiceArea> getTgtServAreas() const;
+    std::shared_ptr<reftools::mbsf::ExternalMbsServiceArea> getExtTgtServAreas() const;
       
 private:
-    std::shared_ptr<MBSDistributionSessionInfo> m_mbsDistributionSessionInfo;
+    std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> m_mbsDistributionSessionInfo;
 
 };
 

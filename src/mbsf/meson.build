@@ -125,6 +125,8 @@ libmbsf_dist_sources = files('''
     TimerFunc.hh
     TrackingAreaIdentity.cc
     TrackingAreaIdentity.hh
+    UniqueMBSSessionId.cc
+    UniqueMBSSessionId.hh
     UserDataIngSession.cc
     UserDataIngSession.hh
     UserService.cc

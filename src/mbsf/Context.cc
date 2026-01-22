@@ -35,8 +35,16 @@
 #include "Open5GSYamlIter.hh"
 #include "UserService.hh"
 #include "UserDataIngSession.hh"
+#include "UniqueMBSSessionId.hh"
+#include "openapi/model/ExternalMbsServiceArea.h"
+#include "openapi/model/MbsServiceArea.h"
+#include "openapi/model/MbsSessionId.h"
 
 #include "Context.hh"
+
+using reftools::mbsf::ExternalMbsServiceArea;
+using reftools::mbsf::MbsServiceArea;
+using reftools::mbsf::MbsSessionId;
 
 MBSF_NAMESPACE_START
 
@@ -45,8 +53,10 @@ Context::Context()
     ,cacheControl({60, 60, 60})
     ,capacity({100,100})
     ,allowedMulticastRange()
-    ,m_userDataIngSessMutex()
+    ,m_userDataIngSessMutex(new std::recursive_mutex)
     ,m_userDataIngSessions()
+    ,m_mbsSessionIdsMutex(new std::recursive_mutex)
+    ,m_mbsSessionIds()
 {
 }
 
@@ -56,6 +66,10 @@ Context::~Context()
         for (auto &svr: svrs) {
             svr.reset();
         }
+    }
+    {
+        std::lock_guard<decltype(m_userDataIngSessMutex)::element_type> lock(*m_userDataIngSessMutex);
+        m_userDataIngSessions.clear();
     }
     UserDataIngSession::clearRegistries();
 }
@@ -149,15 +163,32 @@ void Context::deleteUserService(const std::string &id)
 
 void Context::addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &session)
 {
+    if (!session) return;
     std::shared_ptr<UserDataIngSession> map_session(session);
-    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    std::lock_guard<std::recursive_mutex> lock(*m_userDataIngSessMutex);
     m_userDataIngSessions.insert(std::make_pair<std::string, std::shared_ptr<UserDataIngSession> >(std::string(map_session->userDataIngSessionId()), std::move(map_session)));
+    auto mbs_user_data_ing_session = session->getMBSUserIngSession();
+    for (auto &[dist_sess_id, dist_sess_info] : mbs_user_data_ing_session->getMbsDisSessInfos()) {
+        if (dist_sess_info) {
+            auto info = dist_sess_info.value();
+            if (info) {
+                const auto &mbs_session_id = info->getMbsSessionId();
+                if (mbs_session_id) {
+                    const auto &mbs_service_area = info->getTgtServAreas();
+                    const auto &ext_mbs_service_area = info->getExtTgtServAreas();
+                    addMbsSessionId(!!mbs_session_id.value()->getSsm(), mbs_session_id.value(),
+                                    mbs_service_area?mbs_service_area.value():std::shared_ptr<MbsServiceArea>(),
+                                    ext_mbs_service_area?ext_mbs_service_area.value():std::shared_ptr<ExternalMbsServiceArea>());
+                }
+            }
+        }
+    }
 }
 
 
 void Context::deleteUserDataIngSession(const std::string &id)
 {
-    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    std::lock_guard<std::recursive_mutex> lock(*m_userDataIngSessMutex);
     auto it = m_userDataIngSessions.find(id);
     if (it != m_userDataIngSessions.end()) {
         m_userDataIngSessions.erase(it);
@@ -166,15 +197,59 @@ void Context::deleteUserDataIngSession(const std::string &id)
     }
 }
 
-const std::shared_ptr<UserDataIngSession> &Context::findUserDataIngSession(const std::string &id)
+const std::shared_ptr<UserDataIngSession> &Context::findUserDataIngSession(const std::string &id) const
 {
-    std::lock_guard<std::recursive_mutex> lock(m_userDataIngSessMutex);
+    std::lock_guard<std::recursive_mutex> lock(*m_userDataIngSessMutex);
     auto it = m_userDataIngSessions.find(id);
     if (it != m_userDataIngSessions.end()) {
         return it->second;
     }
     static const std::shared_ptr<UserDataIngSession> null_udis(nullptr);
     return null_udis;
+}
+
+void Context::addMbsSessionId(const UniqueMbsSessionId &mbs_session_id)
+{
+    std::lock_guard<std::recursive_mutex> lock(*m_mbsSessionIdsMutex);
+    auto [it, inserted] = m_mbsSessionIds.insert(mbs_session_id);
+    if (!inserted) {
+        ogs_warn("Attempt to insert duplicate %s into context", mbs_session_id.repr().c_str());
+    }
+}
+
+void Context::addMbsSessionId(bool request_tmgi, const std::shared_ptr<MbsSessionId> &mbs_session_id,
+                              const std::shared_ptr<MbsServiceArea> &mbs_svc_area,
+                              const std::shared_ptr<ExternalMbsServiceArea> &ext_mbs_svc_area)
+{
+    addMbsSessionId(UniqueMbsSessionId(request_tmgi, mbs_session_id, mbs_svc_area, ext_mbs_svc_area));
+}
+
+void Context::deleteMbsSessionId(const UniqueMbsSessionId &mbs_session_id)
+{
+    std::lock_guard<std::recursive_mutex> lock(*m_mbsSessionIdsMutex);
+    if (!m_mbsSessionIds.erase(mbs_session_id)) {
+        ogs_warn("Attempt to delete non-existant %s from context", mbs_session_id.repr().c_str());
+    }
+}
+
+void Context::deleteMbsSessionId(bool request_tmgi, const std::shared_ptr<MbsSessionId> &mbs_session_id,
+                                 const std::shared_ptr<MbsServiceArea> &mbs_svc_area,
+                                 const std::shared_ptr<ExternalMbsServiceArea> &ext_mbs_svc_area)
+{
+    deleteMbsSessionId(UniqueMbsSessionId(request_tmgi, mbs_session_id, mbs_svc_area, ext_mbs_svc_area));
+}
+
+bool Context::haveMbsSessionId(const UniqueMbsSessionId &mbs_session_id) const
+{
+    std::lock_guard<std::recursive_mutex> lock(*m_mbsSessionIdsMutex);
+    return m_mbsSessionIds.contains(mbs_session_id);
+}
+
+bool Context::haveMbsSessionId(bool request_tmgi, const std::shared_ptr<MbsSessionId> &mbs_session_id,
+                               const std::shared_ptr<MbsServiceArea> &mbs_svc_area,
+                               const std::shared_ptr<ExternalMbsServiceArea> &ext_mbs_svc_area) const
+{
+    return haveMbsSessionId(UniqueMbsSessionId(request_tmgi, mbs_session_id, mbs_svc_area, ext_mbs_svc_area));
 }
 
 void Context::parseCacheControl(Open5GSYamlIter &iter) {

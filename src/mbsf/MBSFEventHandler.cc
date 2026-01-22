@@ -65,7 +65,7 @@ void MBSFEventHandler::dispatch(Open5GSFSM &fsm, Open5GSEvent &event)
     case OGS_EVENT_SBI_SERVER:
         {
             Open5GSSBIRequest request(event.sbiRequest());
-            Open5GSSBIStream stream(reinterpret_cast<ogs_sbi_stream_t*>(event.sbiData()));
+            Open5GSSBIStream stream(OGS_POINTER_TO_UINT(reinterpret_cast<ogs_sbi_stream_t*>(event.sbiData())));
 
             Open5GSSBIMessage message;
 

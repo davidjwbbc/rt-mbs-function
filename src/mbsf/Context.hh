@@ -23,22 +23,29 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <vector>
 
 #include "ogs-sbi.h"
 #include "ogs-app.h"
 
 #include "common.hh"
+#include "openapi/model/MbsSessionId.h"
+
+namespace reftools::mbsf {
+    class MbsServiceArea;
+    class ExternalMbsServiceArea;
+}
 
 MBSF_NAMESPACE_START
 
-class MBSSession;
 class Open5GSSBIServer;
 class Open5GSSBIClient;
 class Open5GSSockAddr;
 class Open5GSYamlIter;
 class UserService;
 class UserDataIngSession;
+class UniqueMbsSessionId;
 
 class Context {
 public:
@@ -56,9 +63,24 @@ public:
 
     void addUserService(const std::shared_ptr<UserService> &userService);
     void deleteUserService(const std::string &userServiceId);
+
     void addUserDataIngSession(const std::shared_ptr<UserDataIngSession> &userIngSession);
     void deleteUserDataIngSession(const std::string &userIngSessionId);
-    const std::shared_ptr<UserDataIngSession> &findUserDataIngSession(const std::string &id);
+    const std::shared_ptr<UserDataIngSession> &findUserDataIngSession(const std::string &id) const;
+
+    void addMbsSessionId(const UniqueMbsSessionId &mbs_session_id);
+    void addMbsSessionId(bool request_tmgi, const std::shared_ptr<reftools::mbsf::MbsSessionId> &mbs_session_id,
+                         const std::shared_ptr<reftools::mbsf::MbsServiceArea> &mbs_service_area,
+                         const std::shared_ptr<reftools::mbsf::ExternalMbsServiceArea> &ext_mbs_service_area);
+    void deleteMbsSessionId(const UniqueMbsSessionId &mbs_session_id);
+    void deleteMbsSessionId(bool request_tmgi, const std::shared_ptr<reftools::mbsf::MbsSessionId> &mbs_session_id,
+                            const std::shared_ptr<reftools::mbsf::MbsServiceArea> &mbs_service_area,
+                            const std::shared_ptr<reftools::mbsf::ExternalMbsServiceArea> &ext_mbs_service_area);
+    bool haveMbsSessionId(const UniqueMbsSessionId &mbs_session_id) const;
+    bool haveMbsSessionId(bool request_tmgi, const std::shared_ptr<reftools::mbsf::MbsSessionId> &mbs_session_id,
+                          const std::shared_ptr<reftools::mbsf::MbsServiceArea> &mbs_service_area,
+                          const std::shared_ptr<reftools::mbsf::ExternalMbsServiceArea> &ext_mbs_service_area) const;
+
     int load();
 
     enum ServerType {
@@ -93,8 +115,11 @@ private:
     void parseConfiguration(std::string &pc_key, Open5GSYamlIter &iter);
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(ogs_socknode_t *node);
 
-    std::recursive_mutex m_userDataIngSessMutex;
+    std::shared_ptr<std::recursive_mutex> m_userDataIngSessMutex;
     std::map<std::string, std::shared_ptr<UserDataIngSession> > m_userDataIngSessions;
+
+    std::shared_ptr<std::recursive_mutex> m_mbsSessionIdsMutex;
+    std::set<UniqueMbsSessionId> m_mbsSessionIds;
 };
 
 MBSF_NAMESPACE_STOP

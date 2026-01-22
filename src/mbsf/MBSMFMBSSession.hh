@@ -83,6 +83,14 @@ public:
 
     static bool processEvent(Open5GSEvent &event);
 
+    mb_smf_sc_mbs_service_type_e getServiceType() const;
+    bool getTunnelRequest() const;
+    bool getTmgiRequest() const;
+    mb_smf_sc_activity_status_e getActivityStatus() const;
+    bool getAnyUeInd() const;
+    bool getLocationDependent() const;
+    
+
     MBSMFMBSSession &setAssociatedSessionId(std::shared_ptr< AssociatedSessionId > associated_session_id);
     MBSMFMBSSession &setSession(mb_smf_sc_mbs_session_t *session);
     MBSMFMBSSession &setServiceType(mb_smf_sc_mbs_service_type_e service_type);

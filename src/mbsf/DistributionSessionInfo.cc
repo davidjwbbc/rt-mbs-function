@@ -34,19 +34,20 @@
 #include "common.hh"
 #include "App.hh"
 #include "Context.hh"
+#include "UniqueMBSSessionId.hh"
 #include "UserDataIngSession.hh"
-#include "openapi/model/MBSDistributionSessionInfo.h"
-#include "openapi/model/MbsServiceInfo.h"
-#include "openapi/model/FECConfig.h"
+#include "openapi/model/AssociatedSessionId.h"
+#include "openapi/model/DistributionMethod.h"
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/ExternalMbsServiceArea.h"
+#include "openapi/model/FECConfig.h"
+#include "openapi/model/MBSDistributionSessionInfo.h"
 #include "openapi/model/MbsServiceArea.h"
-#include "openapi/model/PacketDistrMethInfo.h"
-#include "openapi/model/DistributionMethod.h"
-#include "openapi/model/NrRedCapUeInfo.h"
+#include "openapi/model/MbsServiceInfo.h"
 #include "openapi/model/MbsSessionId.h"
-#include "openapi/model/AssociatedSessionId.h"
+#include "openapi/model/NrRedCapUeInfo.h"
 #include "openapi/model/ObjectDistrMethInfo.h"
+#include "openapi/model/PacketDistrMethInfo.h"
 
 #include "mb-smf-service-consumer.h"
 
@@ -54,13 +55,14 @@
 #include "DistributionSessionInfo.hh"
 
 using fiveg_mag_reftools::CJson;
-using reftools::mbsf::DistSessionState;
-using reftools::mbsf::MBSUserDataIngSession;
-using reftools::mbsf::MBSDistributionSessionInfo;
-using reftools::mbsf::MbsServiceInfo;
 using fiveg_mag_reftools::ModelException;
-using reftools::mbsf::MbsSessionId;
+using reftools::mbsf::DistSessionState;
+using reftools::mbsf::ExternalMbsServiceArea;
+using reftools::mbsf::MBSDistributionSessionInfo;
+using reftools::mbsf::MbsServiceArea;
 using reftools::mbsf::MbsServiceInfo;
+using reftools::mbsf::MbsSessionId;
+using reftools::mbsf::MBSUserDataIngSession;
 
 MBSF_NAMESPACE_START
 
@@ -144,7 +146,38 @@ std::shared_ptr<MBSDistributionSessionInfo> &DistributionSessionInfo::updateMBSD
     return m_mbsDistributionSessionInfo;
 }
 
+UniqueMbsSessionId DistributionSessionInfo::getUniqueMbsSessionId() const
+{
+    const auto &mbs_session_id = getMbsSessionId();
+    if (!mbs_session_id) return UniqueMbsSessionId();
+    const auto &mbs_service_area = getTgtServAreas();
+    const auto &ext_mbs_service_area = getExtTgtServAreas();
+    return UniqueMbsSessionId(!!mbs_session_id->getSsm(), mbs_session_id, mbs_service_area, ext_mbs_service_area);
+}
 
+std::shared_ptr<MbsSessionId> DistributionSessionInfo::getMbsSessionId() const
+{
+    if (!m_mbsDistributionSessionInfo) return nullptr;
+    const auto &mbs_session_id = m_mbsDistributionSessionInfo->getMbsSessionId();
+    if (!mbs_session_id) return nullptr;
+    return mbs_session_id.value();
+}
+
+std::shared_ptr<MbsServiceArea> DistributionSessionInfo::getTgtServAreas() const
+{
+    if (!m_mbsDistributionSessionInfo) return nullptr;
+    const auto &mbs_service_area = m_mbsDistributionSessionInfo->getTgtServAreas();
+    if (!mbs_service_area) return nullptr;
+    return mbs_service_area.value();
+}
+
+std::shared_ptr<ExternalMbsServiceArea> DistributionSessionInfo::getExtTgtServAreas() const
+{
+    if (!m_mbsDistributionSessionInfo) return nullptr;
+    const auto &ext_mbs_service_area = m_mbsDistributionSessionInfo->getExtTgtServAreas();
+    if (!ext_mbs_service_area) return nullptr;
+    return ext_mbs_service_area.value();
+}
 
 MBSF_NAMESPACE_STOP
 

@@ -178,7 +178,7 @@ public:
     void handleUserDataIngSessionUpdate(ogs_pool_id_t stream_id, std::shared_ptr<Open5GSSBIRequest> &request);
     void updateMbstfRemovedDistSession();
     const std::shared_ptr<UserDataIngSession> &findSessionBySbiObject(const std::shared_ptr<Open5GSSBIObject>& sbi_obj);
-    void addToDistributionSessionInfos(const std::string &key, const std::shared_ptr< ContextData > context);
+    void addToDistributionSessionInfos(const std::string &key, const std::shared_ptr<ContextData> &context);
     std::shared_ptr< UserDataIngSession::ContextData > getDistributionSessionInfoData(const std::string &key);
     void removeDistributionSessionInfo(std::string &key);
     void deleteDistributionSessionInfo(std::string &key);
@@ -275,7 +275,6 @@ private:
     SysTimeMS m_lastUsed;
     std::string m_hash;
     std::string m_UserDataIngSessionId;
-    std::recursive_mutex m_rmutex;
     std::shared_ptr<AlwaysActive> m_alwaysActive;
     std::shared_ptr<ActivePeriods> m_activePeriods;
     std::shared_ptr<ActivePeriodsRepRule> m_activePeriodsRepRule;
@@ -287,9 +286,9 @@ private:
 
     //key: Dist Session Infos present in this User Data Ingest Session
     std::map<std::string, std::shared_ptr< ContextData >> m_distributionSessionInfos;
-    std::recursive_mutex m_distSessInfosMutex;
+    std::unique_ptr<std::recursive_mutex> m_distSessInfosMutex;
 
-    std::recursive_mutex m_deleteRequestsMutex;
+    std::unique_ptr<std::recursive_mutex> m_deleteRequestsMutex;
     std::list<ogs_pool_id_t> m_deleteRequests;
 };
 

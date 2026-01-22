@@ -65,6 +65,7 @@
 #include "Open5GSYamlDocument.hh"
 #include "Open5GSNetworkFunction.hh"
 #include "UserService.hh"
+#include "UniqueMBSSessionId.hh"
 #include "openapi/model/DistSession.h"
 #include "openapi/model/MBSUserDataIngSession.h"
 #include "openapi/model/Tmgi.h"
@@ -100,22 +101,31 @@
 #include "UserDataIngSession.hh"
 
 using fiveg_mag_reftools::CJson;
-using reftools::mbsf::DistSessionState;
-using reftools::mbsf::MBSUserDataIngSession;
-using reftools::mbsf::MBSDistributionSessionInfo;
-using reftools::mbsf::MbsServiceInfo;
 using fiveg_mag_reftools::ModelException;
-using reftools::mbsf::ObjDistributionData;
-using reftools::mbsf::TunnelAddress;
-using reftools::mbsf::Ssm;
-using reftools::mbsf::MbsSessionId;
-using reftools::mbsf::MbsServiceType;
+using fiveg_mag_reftools::ProblemCause;
+using reftools::mbsf::AssociatedSessionId;
+using reftools::mbsf::DistSession;
+using reftools::mbsf::DistSessionState;
+using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::IpAddr;
-using reftools::mbsf::PlmnId;
-using reftools::mbsf::Tmgi;
+using reftools::mbsf::MBSDistributionSessionInfo;
+using reftools::mbsf::MbsServiceArea;
+using reftools::mbsf::MbsServiceInfo;
+using reftools::mbsf::MbsServiceType;
+using reftools::mbsf::MbsSessionId;
+using reftools::mbsf::MbStfIngestAddr;
+using reftools::mbsf::MBSUserDataIngSession;
+using reftools::mbsf::ObjAcquisitionMethod;
+using reftools::mbsf::ObjDistributionData;
 using reftools::mbsf::ObjDistributionOperatingMode;
 using reftools::mbsf::ObjectDistrMethInfo;
-using reftools::mbsf::ObjAcquisitionMethod;
+using reftools::mbsf::PacketDistrMethInfo;
+using reftools::mbsf::PktDistributionOperatingMode;
+using reftools::mbsf::PktIngestMethod;
+using reftools::mbsf::PlmnId;
+using reftools::mbsf::Ssm;
+using reftools::mbsf::Tmgi;
+using reftools::mbsf::TunnelAddress;
 
 MBSF_NAMESPACE_START
 
@@ -157,7 +167,6 @@ UserDataIngSession::UserDataIngSession(CJson &json, bool as_request)
     ,m_lastUsed()
     ,m_hash()
     ,m_UserDataIngSessionId()
-    ,m_rmutex()
     ,m_alwaysActive(nullptr)
     ,m_activePeriods(nullptr)
     ,m_activePeriodsRepRule(nullptr)
@@ -167,8 +176,8 @@ UserDataIngSession::UserDataIngSession(CJson &json, bool as_request)
     ,m_desiredDistSessionState()
     ,m_startTimer(true)
     ,m_distributionSessionInfos()
-    ,m_distSessInfosMutex()
-    ,m_deleteRequestsMutex()
+    ,m_distSessInfosMutex(new decltype(m_distSessInfosMutex)::element_type)
+    ,m_deleteRequestsMutex(new decltype(m_deleteRequestsMutex)::element_type)
     ,m_deleteRequests()
 {
     ogs_uuid_t uuid;
@@ -194,6 +203,8 @@ UserDataIngSession::UserDataIngSession(CJson &json, bool as_request)
 
 UserDataIngSession::~UserDataIngSession()
 {
+    clearDistributionSessionInfos();
+    std::lock_guard<decltype(m_deleteRequestsMutex)::element_type> lock(*m_deleteRequestsMutex);
     if (ogs_unlikely(!m_deleteRequests.empty())) {
         ogs_error("User Data Ingest Session deleted before %zu pending responses sent", m_deleteRequests.size());
     }
@@ -216,7 +227,7 @@ const std::shared_ptr<UserDataIngSession> &UserDataIngSession::find(const std::s
 
 int UserDataIngSession::numberOfDistributionSessions()
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     int count = 0;
     std::map<std::string, std::shared_ptr< UserDataIngDistSessId >>::size_type size = s_distSessionIdRegistry.size();
     if (size <= static_cast<std::map<std::string, std::shared_ptr< UserDataIngDistSessId >>::size_type>(std::numeric_limits<int>::max())) {
@@ -630,7 +641,7 @@ std::shared_ptr< DistSessionState > UserDataIngSession::getDistSessionState()
 
    /*
    {
-       std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+       std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
        m_distSessionState = *dist_session_state;
    }
    */
@@ -660,7 +671,7 @@ const DistSessionState UserDataIngSession::getNextDistSessionState() const
  const std::string &UserDataIngSession::distSessionState() const
 {
     {
-       std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+       std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
        return m_distSessionState;
    }
 
@@ -669,7 +680,7 @@ const DistSessionState UserDataIngSession::getNextDistSessionState() const
 const DistSessionState UserDataIngSession::getdistSessState() const
 {
     {
-       std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+       std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
        return m_distSessionState;
    }
 }
@@ -715,7 +726,7 @@ bool UserDataIngSession::startTimer()
     if (transition.first.has_value()) {
 
         {
-            std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+            std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
             m_distSessionState = transition.second;
         }
         std::int64_t dur = duration_timer(transition.first.value());
@@ -730,9 +741,20 @@ bool UserDataIngSession::startTimer()
 
 }
 
-void UserDataIngSession::addToDistributionSessionInfos(const std::string &key, const std::shared_ptr< ContextData > context)
+void UserDataIngSession::addToDistributionSessionInfos(const std::string &key, const std::shared_ptr<ContextData> &context)
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    auto app_context = App::self().context();
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
+    if (context && context->info) {
+        auto &mbs_session_id = context->info->getMbsSessionId();
+        if (mbs_session_id) {
+            const auto &mbs_svc_area = context->info->getTgtServAreas();
+            const auto &ext_mbs_svc_area = context->info->getExtTgtServAreas();
+            app_context->addMbsSessionId(!!mbs_session_id.value()->getSsm(), mbs_session_id.value(),
+                                         mbs_svc_area?mbs_svc_area.value():std::shared_ptr<MbsServiceArea>(),
+                                         ext_mbs_svc_area?ext_mbs_svc_area.value():std::shared_ptr<ExternalMbsServiceArea>());
+        }
+    }
     m_distributionSessionInfos[key] = context;
 
 }
@@ -740,7 +762,7 @@ void UserDataIngSession::addToDistributionSessionInfos(const std::string &key, c
 std::shared_ptr< UserDataIngSession::ContextData > UserDataIngSession::getDistributionSessionInfoData(const std::string &key)
 {
 
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     auto it = m_distributionSessionInfos.find(key);
     if (it != m_distributionSessionInfos.end()) {
         return it->second;
@@ -751,37 +773,44 @@ std::shared_ptr< UserDataIngSession::ContextData > UserDataIngSession::getDistri
 
 void UserDataIngSession::removeDistributionSessionInfo(std::string &key)
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    auto app_context = App::self().context();
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     std::shared_ptr<ContextData> context_data = getDistributionSessionInfoData(key);
     if (context_data && context_data->MBSSession) {
         context_data->MBSSession->deleteSession();
+    }
+    if (context_data && context_data->distributionSessionInfo) {
+        auto mbs_session_id = context_data->distributionSessionInfo->getUniqueMbsSessionId();
+        if (mbs_session_id && app_context->haveMbsSessionId(mbs_session_id)) {
+            app_context->deleteMbsSessionId(mbs_session_id);
+        }
     }
     m_distributionSessionInfos.erase(key);
 }
 
 void UserDataIngSession::deleteDistributionSessionInfo(std::string &key)
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     m_distributionSessionInfos.erase(key);
 }
 
 void UserDataIngSession::addToRegistry(ogs_sbi_xact_t* xact, std::shared_ptr< UserDataIngDistSessId > &ids)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     s_xactRegistry[xact] = ids;
 
 }
 
 void UserDataIngSession::addToRegistry(std::string dist_session_id, std::shared_ptr< UserDataIngDistSessId > &ids)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     s_distSessionIdRegistry[dist_session_id] = ids;
 
 }
 
 void UserDataIngSession::removeFromRegistry(ogs_sbi_xact_t* xact)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     s_xactRegistry.erase(xact);
 }
 
@@ -795,14 +824,14 @@ void UserDataIngSession::removeXact(ogs_sbi_xact_t* xact)
 
 void UserDataIngSession::removeFromRegistry(std::string &dist_session_id)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     s_distSessionIdRegistry.erase(dist_session_id);
 }
 
 
 std::shared_ptr< UserDataIngSession::UserDataIngDistSessId > UserDataIngSession::getFromRegistry(ogs_sbi_xact_t* xact)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     auto it = s_xactRegistry.find(xact);
     if (it != s_xactRegistry.end()) {
         return it->second;
@@ -812,7 +841,7 @@ std::shared_ptr< UserDataIngSession::UserDataIngDistSessId > UserDataIngSession:
 
 std::shared_ptr< UserDataIngSession::UserDataIngDistSessId > UserDataIngSession::getFromRegistry(std::string &dist_session_id)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
     auto it = s_distSessionIdRegistry.find(dist_session_id);
     if (it != s_distSessionIdRegistry.end()) {
         return it->second;
@@ -905,8 +934,8 @@ void UserDataIngSession::handleUserDataIngSessionUpdate(ogs_pool_id_t stream_id,
                             ssm_data.reset(new Ssm(*ssm_val));
                             if (dest_ipv4_addr.has_value() || dest_ipv6_addr.has_value()) {
                                 distribution_session_info.reset(new DistributionSessionInfo(info));
-                                ctx_data.reset(new ContextData{std::string(m_UserDataIngSessionId), std::string(key), distribution_session_info, info, ssm_data, request, stream_id, nullptr});
-                                addToDistributionSessionInfos(std::string(key), ctx_data);
+                                ctx_data.reset(new ContextData{m_UserDataIngSessionId, key, distribution_session_info, info, ssm_data, request, stream_id, nullptr});
+                                addToDistributionSessionInfos(key, ctx_data);
                                 nmbstfDiscoverOnly(ctx_data);
 
                             } else {
@@ -970,6 +999,7 @@ void UserDataIngSession::processUserDataIngSessionUpdate(ogs_pool_id_t stream_id
         createTimer();
     }
 
+    auto app_context = App::self().context();
     const MBSUserDataIngSession::MbsDisSessInfosType  current_dist_sess_infos = m_MBSUserDataIngSession->getMbsDisSessInfos();
     for(const auto &[key, sess_info]: current_dist_sess_infos) {
 
@@ -1010,8 +1040,25 @@ void UserDataIngSession::processUserDataIngSessionUpdate(ogs_pool_id_t stream_id
                     }
 
                 } else {
+                    const auto &mbs_session_id = sess_info_update.value()->getMbsSessionId();
+                    if (mbs_session_id) {
+                        const auto &mbs_svc_area = sess_info_update.value()->getTgtServAreas();
+                        const auto &ext_mbs_svc_area = sess_info_update.value()->getExtTgtServAreas();
+                        UniqueMbsSessionId cmp_mbs_session_id(!!mbs_session_id.value()->getSsm(), mbs_session_id.value(),
+                                    mbs_svc_area?mbs_svc_area.value():std::shared_ptr<MbsServiceArea>(), 
+                                    ext_mbs_svc_area?ext_mbs_svc_area.value():std::shared_ptr<ExternalMbsServiceArea>());
+                        if (app_context->haveMbsSessionId(cmp_mbs_session_id)) {
+                            ogs_error("UserDataIngSession update adds already allocated MBS Session Id");
+                            Open5GSSBIStream stream(stream_id);
+                            Open5GSSBIMessage message;
+                            message.parseHeader(*request);
+                            NfServer::sendError(stream, MBSProblemCause::MBS_DIST_SESSION_ALREADY_CREATED, 2, message, App::self().mbsfAppMetadata(), g_nmbsf_userdataingsession_api_metadata, "Duplicate MBS Session Id", "UserDataIngSession update adds already allocated MBS Session Id");
+                            return;
+                        } else {
+                            app_context->addMbsSessionId(cmp_mbs_session_id);
+                        }
+                    }
                     m_MBSUserDataIngSession->addMbsDisSessInfos(key_in_update, sess_info_update);
-
                 }
                 std::optional<std::shared_ptr< DistSessionState > > received_dist_session_state = update_info->getMbsDistSessState();
                 if (!received_dist_session_state.has_value()) {
@@ -1031,6 +1078,12 @@ void UserDataIngSession::processUserDataIngSessionUpdate(ogs_pool_id_t stream_id
             }
             if (!present_in_update) {
                 context_data->markForDeletion = true;
+                if (context_data->distributionSessionInfo) {
+                    auto mbs_session_id = context_data->distributionSessionInfo->getUniqueMbsSessionId();
+                    if (mbs_session_id && app_context->haveMbsSessionId(mbs_session_id)) {
+                        app_context->deleteMbsSessionId(mbs_session_id);
+                    }
+                }
                 m_MBSUserDataIngSession->removeMbsDisSessInfos(key);
             }
         }
@@ -1100,12 +1153,12 @@ void UserDataIngSession::processDistributionSessionInfo( ogs_pool_id_t stream_id
                     std::optional<std::shared_ptr< Ssm > > ssm = mbs_sess_id->getSsm();
                     if (ssm.has_value()) {
                         std::shared_ptr< Ssm > ssm_val = *ssm;
-                        std::shared_ptr< IpAddr > src_ip_addr = ssm_val->getSourceIpAddr();
+                        //std::shared_ptr< IpAddr > src_ip_addr = ssm_val->getSourceIpAddr();
                         std::shared_ptr< IpAddr > dest_ip_addr = ssm_val->getDestIpAddr();
-                        std::optional<std::string > src_ipv4_addr = src_ip_addr->getIpv4Addr();
-                        std::optional<std::string > dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-                        std::optional<std::shared_ptr< std::string > > src_ipv6_addr = src_ip_addr->getIpv6Addr();
-                        std::optional<std::shared_ptr< std::string > > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+                        //auto &src_ipv4_addr = src_ip_addr->getIpv4Addr();
+                        auto &dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
+                        //auto &src_ipv6_addr = src_ip_addr->getIpv6Addr();
+                        auto &dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                         std::shared_ptr< Ssm > ssm_data = nullptr;
 
                         ssm_data.reset(new Ssm(*ssm_val));
@@ -1151,7 +1204,7 @@ bool UserDataIngSession::processDistSession(std::shared_ptr< DistSession > dist_
     std::shared_ptr<UserDataIngDistSessId> ids = nullptr;
 
     {
-        std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+        std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
         auto it = s_distSessionIdRegistry.find(dist_session->getDistSessionId());
         if (it != s_distSessionIdRegistry.end()) {
             ids = it->second;
@@ -1189,7 +1242,7 @@ std::shared_ptr< UserDataIngSession::ContextData > UserDataIngSession::setDistSe
 
 bool UserDataIngSession::checkIfAllMBSTFResponsesReceived()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (!dist_sess_info.second->receivedMBSTFResponse) {
             return false;
@@ -1201,7 +1254,7 @@ bool UserDataIngSession::checkIfAllMBSTFResponsesReceived()
 
 bool UserDataIngSession::checkIfAllMBSTFPatchResponsesReceived()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (!dist_sess_info.second->receivedMBSTFPatchResponse) {
             return false;
@@ -1213,7 +1266,7 @@ bool UserDataIngSession::checkIfAllMBSTFPatchResponsesReceived()
 
 bool UserDataIngSession::resetReceivedMBSTFResponseFlags()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         dist_sess_info.second->receivedMBSTFResponse = false;
     }
@@ -1342,7 +1395,7 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
     std::shared_ptr<ContextData> context_data = nullptr;
     std::shared_ptr<UserDataIngDistSessId> ids = nullptr;
     {
-        std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+        std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
         auto it = s_xactRegistry.find(xact);
         if (it != s_xactRegistry.end()) {
             ids = it->second;
@@ -1480,7 +1533,7 @@ void UserDataIngSession::deleteMBSTFSession(ogs_sbi_xact_t *xact)
     std::shared_ptr<UserDataIngDistSessId> ids = nullptr;
 
     {
-        std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+        std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
         auto it = s_xactRegistry.find(xact);
         if (it != s_xactRegistry.end()) {
             ids = it->second;
@@ -1502,7 +1555,7 @@ void UserDataIngSession::handlePatchUpdateResponse(ogs_sbi_xact_t *xact)
     std::shared_ptr<UserDataIngDistSessId> ids = nullptr;
 
      {
-        std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+        std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
         auto it = s_xactRegistry.find(xact);
         if (it != s_xactRegistry.end()) {
             ids = it->second;
@@ -1531,7 +1584,7 @@ void UserDataIngSession::rollbackMBSTFDistSessionState(ogs_sbi_xact_t *xact)
 
 
     {
-        std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+        std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
         auto it = s_xactRegistry.find(xact);
         if (it != s_xactRegistry.end()) {
             ids = it->second;
@@ -1581,6 +1634,7 @@ void UserDataIngSession::removeDistributionSessionInfos(void *data)
 
     try{
         std::shared_ptr<UserDataIngSession> ing_sess = find(ids->first);
+        // Do something here?
     } catch (const std::out_of_range &e) {
         std::ostringstream err;
         err << "MBS User Data Ingest Session [" << ids->first << "] does not exist.";
@@ -1591,14 +1645,20 @@ void UserDataIngSession::removeDistributionSessionInfos(void *data)
 
 void UserDataIngSession::clearDistributionSessionInfos()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    auto app_context = App::self().context();
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (auto &dist_sess_info : m_distributionSessionInfos)
     {
         std::shared_ptr<ContextData> context_data = dist_sess_info.second;
         if (context_data->MBSSession) {
             context_data->MBSSession->deleteSession();
         }
-
+        if (app_context && context_data->distributionSessionInfo) {
+            auto mbs_session_id = context_data->distributionSessionInfo->getUniqueMbsSessionId();
+            if (mbs_session_id && app_context->haveMbsSessionId(mbs_session_id)) {
+                app_context->deleteMbsSessionId(mbs_session_id);
+            }
+        }
     }
 
     m_distributionSessionInfos.clear();
@@ -1608,7 +1668,7 @@ bool UserDataIngSession::checkIfAllMBSSessionCreated()
 {
     bool all_mbs_sessions_created = true;
 
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (dist_sess_info.second->MBSSessionStatus != MBSSessionState::CREATED) {
             all_mbs_sessions_created = false;
@@ -1624,7 +1684,7 @@ bool UserDataIngSession::checkIfAllMBSSessionCreated()
 
 bool UserDataIngSession::checkIfAllMBSSessionDeletionsReceived()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (dist_sess_info.second->MBSSessionStatus != MBSSessionState::DELETED) {
             return false;
@@ -1635,7 +1695,7 @@ bool UserDataIngSession::checkIfAllMBSSessionDeletionsReceived()
 
 void UserDataIngSession::sendMbstfRequests()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (auto &dist_sess_info : m_distributionSessionInfos)
     {
 
@@ -1650,7 +1710,7 @@ void UserDataIngSession::sendMbstfRequests()
 
 bool UserDataIngSession::checkIfAllMBSTFDistSessionDeleted()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (!dist_sess_info.second->MBSTFDistSessionDeleted) {
             return false;
@@ -1670,7 +1730,7 @@ bool UserDataIngSession::checkIfAllMBSTFDistSessionDeleted()
 
 void UserDataIngSession::sendMbstfDelRequests(const std::optional<std::string>& key)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
 
     for (auto &[dist_sess_id, user_ing_sess_id_ptr] : s_distSessionIdRegistry) {
         // match session id and, if key provided, match the key
@@ -1688,7 +1748,7 @@ void UserDataIngSession::sendMbstfDelRequests(const std::optional<std::string>& 
 
 void UserDataIngSession::sendLocalEventPatch(const std::optional<std::string>& key)
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
 
     for (auto &[dist_sess_id, user_ing_sess_id_ptr] : s_distSessionIdRegistry) {
         // match session id and, if key provided, match the key
@@ -1707,7 +1767,7 @@ void UserDataIngSession::sendLocalEventPatch(const std::optional<std::string>& k
 
 void UserDataIngSession::updateMbstfRemovedDistSession()
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
 
     for (auto &[dist_sess_id, user_ing_sess_id_ptr] : s_distSessionIdRegistry) {
         if (user_ing_sess_id_ptr->first == m_UserDataIngSessionId)
@@ -1723,7 +1783,7 @@ void UserDataIngSession::updateMbstfRemovedDistSession()
 
 void UserDataIngSession::sendMbstfPatchRollbackRequests()
 {
-    std::lock_guard<std::recursive_mutex> lock(s_registry_mutex);
+    std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
 
     for (auto &[dist_sess_id, user_ing_sess_id_ptr] : s_distSessionIdRegistry) {
         if (user_ing_sess_id_ptr->first == m_UserDataIngSessionId) {
@@ -1801,7 +1861,7 @@ void UserDataIngSession::setMBSSessionDeleted(void *data)
         context_data->MBSSessionStatus = MBSSessionState::DELETED;
         if (ing_sess->checkIfAllMBSSessionDeletionsReceived()) {
             const NfServer::AppMetadata &app_meta = App::self().mbsfAppMetadata();
-            std::lock_guard<decltype(ing_sess->m_deleteRequestsMutex)> lock(ing_sess->m_deleteRequestsMutex);
+            std::lock_guard<decltype(ing_sess->m_deleteRequestsMutex)::element_type> lock(*ing_sess->m_deleteRequestsMutex);
             for (auto id : ing_sess->m_deleteRequests) {
                 Open5GSSBIStream stream(id);
                 std::shared_ptr<Open5GSSBIResponse> response(NfServer::newResponse(std::nullopt, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, g_nmbsf_userdataingsession_api_metadata, app_meta));
@@ -1848,7 +1908,7 @@ void UserDataIngSession::setMBSSessionFailureFlag(void *data, const std::optiona
 
 void UserDataIngSession::handleFailedMBSSession()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (dist_sess_info.second->MBSSessionStatus == MBSSessionState::FAILED) {
             UserDataIngDistSessId *ids = new UserDataIngDistSessId(dist_sess_info.second->ingSessionId, dist_sess_info.second->distSessionInfoKey);
@@ -1860,7 +1920,7 @@ void UserDataIngSession::handleFailedMBSSession()
 
 bool UserDataIngSession::checkIfAllMBSSessionResponsesReceived()
 {
-    std::lock_guard<decltype(m_distSessInfosMutex)> lock(m_distSessInfosMutex);
+    std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     for (const auto &dist_sess_info : m_distributionSessionInfos) {
         if (dist_sess_info.second->MBSSessionStatus != MBSSessionState::CREATED &&
             dist_sess_info.second->MBSSessionStatus != MBSSessionState::FAILED) {
@@ -2088,7 +2148,7 @@ std::string UserDataIngSession::maxContBitRate(std::shared_ptr<MBSDistributionSe
 
 void UserDataIngSession::pendingDeleteResponse(ogs_pool_id_t stream_id)
 {
-    std::lock_guard<decltype(m_deleteRequestsMutex)> lock(m_deleteRequestsMutex);
+    std::lock_guard<decltype(m_deleteRequestsMutex)::element_type> lock(*m_deleteRequestsMutex);
     m_deleteRequests.push_back(stream_id);
 }
 
@@ -2250,6 +2310,7 @@ static bool validate_state_setting_options(std::shared_ptr<UserDataIngSession> u
         invalid_params["actPeriods"] = "actPeriods cannot be present if any mbsDistSessState or actPeriodRepRule are present";
         invalid_params["actPeriodRepRule"] = "actPeriodRepRule cannot be present if any mbsDistSessState or actPeriods are present";
     }
+    std::shared_ptr<Context> context = App::self().context();
     for (auto &[dist_sess_id, dist_sess_info] : mbs_user_data_ing_session->getMbsDisSessInfos()) {
         if (dist_sess_info.has_value())
         {
@@ -2259,7 +2320,7 @@ static bool validate_state_setting_options(std::shared_ptr<UserDataIngSession> u
                 if (dist_session_state.has_value()){
                     std::shared_ptr< DistSessionState > dist_sess_state = dist_session_state.value();
                     if (dist_sess_state->getString() == "DEACTIVATING") {
-                        invalid_params[std::format("mbsDisSessInfos.{}.mbsDistSessState = {}", dist_sess_id, dist_sess_state->getString())] = "mbsDistSessState cannot be DEACTIVATING";
+                        invalid_params[std::format("mbsDisSessInfos.{}.mbsDistSessState", dist_sess_id)] = "mbsDistSessState cannot be DEACTIVATING";
                     }
                 }
                 if (dist_session_state.has_value() && mbs_user_data_ing_session->getActPeriods()) {
@@ -2267,9 +2328,19 @@ static bool validate_state_setting_options(std::shared_ptr<UserDataIngSession> u
                    invalid_params[std::format("mbsDisSessInfos.{}.mbsDistSessState", dist_sess_id)] = "mbsDistSessState cannot be present if actPeriods or actPeriodRepRule are present";
                 }
 
+                const auto &mbs_session_id = info->getMbsSessionId();
+                if (mbs_session_id) {
+                    const auto &mbs_service_area = info->getTgtServAreas();
+                    const auto &ext_mbs_service_area = info->getExtTgtServAreas();
+                    UniqueMbsSessionId unique_mbs_session_id(!!mbs_session_id.value()->getSsm(), mbs_session_id.value(),
+                                    mbs_service_area?mbs_service_area.value():std::shared_ptr<MbsServiceArea>(),
+                                    ext_mbs_service_area?ext_mbs_service_area.value():std::shared_ptr<ExternalMbsServiceArea>());
+                    if (context->haveMbsSessionId(unique_mbs_session_id)) {
+                        invalid_params[std::format("mbsDisSessInfos.{}.mbsSessionId", dist_sess_id)] = "mbsSessionId already used in another UserDataIngSession";
+                    }
+                }
             }
         }
-
     }
     if (!invalid_params.empty()) {
         ogs_assert(true == NfServer::sendError(stream, ProblemCause::OPTIONAL_IE_INCORRECT, 0, message,
