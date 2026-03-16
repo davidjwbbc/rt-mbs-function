@@ -22,6 +22,9 @@
 #include "mb-smf-service-consumer.h"
 
 #include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
 
 #include "openapi/model/ApplicationServiceDescription.h"
 #include "common.hh"
@@ -33,9 +36,7 @@ public:
 
     ApplicationServiceDesc(fiveg_mag_reftools::CJson &json, bool as_request);
     ApplicationServiceDesc(const std::shared_ptr<reftools::mbsf::ApplicationServiceDescription> &application_service_description);
-    ApplicationServiceDesc(const std::string &entry_point_locator, const std::string &content_type);
-    ApplicationServiceDesc(const std::string &entry_point_locator);
-    ApplicationServiceDesc(const std::string &obj_distr_uri, const std::string &obj_ing_uri, const std::string &obj_acq_id);
+    ApplicationServiceDesc(const std::string &entry_point_locator, const std::optional<std::string> &content_type = std::nullopt);
     ApplicationServiceDesc() = delete;
     ApplicationServiceDesc(ApplicationServiceDesc &&other) = delete;
     ApplicationServiceDesc(const ApplicationServiceDesc &other) = delete;

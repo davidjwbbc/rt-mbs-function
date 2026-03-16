@@ -429,29 +429,30 @@ std::optional<std::list<std::shared_ptr<AvailabilityInfo>>> DistributionSessionI
 std::optional<std::list<std::shared_ptr<ApplicationServiceDesc>>> DistributionSessionInfo::applicationServiceDescriptions()
 {
 
-    if(!m_mbsDistributionSessionInfo) return std::nullopt;
-    std::optional<std::list<std::shared_ptr<ApplicationServiceDesc>>> application_service_descs = std::nullopt;
-    std::optional<std::shared_ptr< ObjectDistrMethInfo > > obj_dist_method_info = m_mbsDistributionSessionInfo->getObjDistrInfo();
-    if(obj_dist_method_info.has_value()) {
-        std::shared_ptr< ObjectDistrMethInfo > dist_method_info = obj_dist_method_info.value();
-        const std::optional<std::string > &obj_ing_uri = dist_method_info->getObjIngUri();
+    if (!m_mbsDistributionSessionInfo) return std::nullopt;
+    std::optional< std::list< std::shared_ptr<ApplicationServiceDesc> > > application_service_descs = std::nullopt;
+    std::optional< std::shared_ptr<ObjectDistrMethInfo> > obj_dist_method_info = m_mbsDistributionSessionInfo->getObjDistrInfo();
+    if (obj_dist_method_info.has_value()) {
+        const std::shared_ptr<ObjectDistrMethInfo> &dist_method_info = obj_dist_method_info.value();
 
-	if(!obj_ing_uri.has_value()) return std::nullopt;
-        const std::optional<std::string > &obj_distr_uri = dist_method_info->getObjDistrUri();
+        std::string entry_point_prefix;
+        const auto &obj_distr_uri = dist_method_info->getObjDistrUri();
+        if (!obj_distr_uri) {
+            const auto &obj_ing_uri = dist_method_info->getObjIngUri();
+            if (!obj_ing_uri) return std::nullopt;
+            entry_point_prefix = trim_slashes(obj_ing_uri.value()) + "/";
+        } else {
+            entry_point_prefix = trim_slashes(obj_distr_uri.value()) + "/";
+        }
 
-	if(!obj_distr_uri.has_value()) return std::nullopt;
-
-        application_service_descs = std::list<std::shared_ptr<ApplicationServiceDesc>>();
-        const std::list<std::optional<std::string >, fiveg_mag_reftools::OgsAllocator<std::optional<std::string > > > &obj_acq_ids = dist_method_info->getObjAcqIds();
-	for (const auto &obj_acq_id : obj_acq_ids) {
-
-	    if(obj_acq_id.has_value()) {
-
-	        std::shared_ptr<ApplicationServiceDesc> application_service_desc(new ApplicationServiceDesc(obj_distr_uri.value(), obj_ing_uri.value(), obj_acq_id.value()));
-                application_service_descs->push_back(application_service_desc);
-
-	    }
-	}
+        application_service_descs = std::list< std::shared_ptr<ApplicationServiceDesc> >();
+        const auto &obj_acq_ids = dist_method_info->getObjAcqIds();
+        for (const auto &obj_acq_id : obj_acq_ids) {
+            if (obj_acq_id.has_value()) {
+                application_service_descs->emplace_back(new ApplicationServiceDesc(entry_point_prefix + obj_acq_id.value()));
+            }
+        }
+        if (application_service_descs.value().empty()) application_service_descs.reset();
     }
 
     return application_service_descs;
