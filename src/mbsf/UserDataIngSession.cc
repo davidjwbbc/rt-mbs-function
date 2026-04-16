@@ -929,7 +929,7 @@ void UserDataIngSession::updateContexts(ogs_pool_id_t stream_id, std::shared_ptr
                                         .tsi = tsi
                                 });
                                 addToDistributionSessionInfos(key, ctx_data);
-                                nmbstfDiscoverOnly(ctx_data);
+                                createMbsSession(ctx_data);
 
                             } else {
                                 ogs_error("Unable to resolve SSM addresses");
@@ -1322,28 +1322,6 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
         return false;
     }
 
-    Open5GSSBIClient mbstf_client(reinterpret_cast<ogs_sbi_client_t*>(NF_INSTANCE_CLIENT(nf_instance)));
-    std::shared_ptr<MBSMFMBSSession> mb_smf_mbs_session;
-    std::string src_ipv4_addr;
-    std::string src_ipv6_addr;
-
-    ogs_sockaddr_t *client_ipv4_addr =  mbstf_client.ogsSBIClientIPv4Addr();
-    ogs_sockaddr_t *client_ipv6_addr =  mbstf_client.ogsSBIClientIPv6Addr();
-
-    if (client_ipv4_addr) {
-        char *ipv4_addr = mbstf_client.ogsIpStrdup(client_ipv4_addr);
-        src_ipv4_addr = std::string(ipv4_addr);
-        ogs_free(ipv4_addr);
-    }
-
-    if (client_ipv6_addr) {
-         char *ipv6_addr = mbstf_client.ogsIpStrdup(client_ipv6_addr);
-         src_ipv6_addr = std::string(ipv6_addr);
-         ogs_free(ipv6_addr);
-    }
-
-
-    std::shared_ptr<ContextData> context_data = nullptr;
     std::shared_ptr<UserDataIngDistSessId> ids = nullptr;
     {
         std::lock_guard<decltype(s_registry_mutex)> lock(s_registry_mutex);
@@ -1361,8 +1339,7 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
     if (nf_instance->t_validity)  ogs_timer_stop(nf_instance->t_validity);
     ing_session->setNFInstance(xact->service_type, nf_instance);
 
-
-    context_data = getContextData(ids);
+    const auto &context_data = getContextData(ids);
     if (!context_data) {
         ogs_error("Unable to get context data from registry");
         return false;
@@ -1370,29 +1347,37 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
 
     if (context_data->mbstfNFInstanceId.empty()) context_data->mbstfNFInstanceId = std::string(nf_instance->id);
 
-    std::shared_ptr<Ssm> ssm_ptr = context_data->ssm;
+    removeFromRegistry(xact);
+
+    return true;
+}
+
+bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSession::ContextData> &context_data)
+{
+    const auto &ssm_ptr = context_data->ssm;
     if (!ssm_ptr) ogs_error("Unable to get SSM from Context Data");
 
-    std::shared_ptr< IpAddr > dest_ip_addr = ssm_ptr->getDestIpAddr();
-    std::optional<std::string > dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-    std::optional<std::shared_ptr< std::string > > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+    const auto &dest_ip_addr = ssm_ptr->getDestIpAddr();
+    const auto &dest_ipv4_addr = dest_ip_addr?dest_ip_addr->getIpv4Addr():std::nullopt;
+    const auto &dest_ipv6_addr = dest_ip_addr?dest_ip_addr->getIpv6Addr():std::nullopt;
+    const auto &src_ip_addr = ssm_ptr->getSourceIpAddr();
+    const auto &src_ipv4_addr = src_ip_addr?src_ip_addr->getIpv4Addr():std::nullopt;
+    const auto &src_ipv6_addr = src_ip_addr?src_ip_addr->getIpv6Addr():std::nullopt;
 
-    if (!client_ipv4_addr && !client_ipv6_addr) {
+    std::shared_ptr<MBSMFMBSSession> mb_smf_mbs_session = nullptr;
+    if (!src_ipv4_addr && !src_ipv6_addr) {
         mb_smf_mbs_session.reset(new MBSMFMBSSession(mb_smf_sc_mbs_session_new()));
         mb_smf_mbs_session->setTunnelRequest(true);
-
-    } else if (client_ipv4_addr && dest_ipv4_addr.has_value()) {
+    } else if (src_ipv4_addr && dest_ipv4_addr) {
         struct addrinfo *ai_src = NULL, *ai_dest = NULL;
         void *src_addr = NULL, *dest_addr = NULL;
 
-        if (resolve_src_dest_addr(src_ipv4_addr, dest_ipv4_addr.value(), &ai_src, &ai_dest))
+        if (resolve_src_dest_addr(src_ipv4_addr.value(), dest_ipv4_addr.value(), &ai_src, &ai_dest))
         {
             if (get_src_dest_of_same_addr_family(AF_INET, ai_src, ai_dest, &src_addr, &dest_addr))
             {
                 mb_smf_mbs_session.reset(new MBSMFMBSSession(
-                mb_smf_sc_mbs_session_new_ipv4((const struct in_addr*)src_addr,
-                                                     (const struct in_addr*)dest_addr)));
-
+                mb_smf_sc_mbs_session_new_ipv4((const struct in_addr*)src_addr, (const struct in_addr*)dest_addr)));
            } else {
                ogs_error("Unable to resolve SSM addresses for IPv4 address family");
                if (ai_src) {
@@ -1406,6 +1391,9 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
                 }
                 return false;
             }
+        } else {
+            ogs_error("Unable to resolve SSM addresses for IPv4 address family");
+            return false;
         }
         if (ai_src) {
             freeaddrinfo(ai_src);
@@ -1416,29 +1404,28 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
             freeaddrinfo(ai_dest);
             ai_dest = NULL;
         }
+    } else if (src_ipv6_addr && dest_ipv6_addr) {
+        struct addrinfo *ai_src = NULL, *ai_dest = NULL;
+        void *src_addr = NULL, *dest_addr = NULL;
 
-    } else if (client_ipv6_addr && dest_ipv6_addr.has_value()) {
-       struct addrinfo *ai_src = NULL, *ai_dest = NULL;
-       void *src_addr = NULL, *dest_addr = NULL;
-       std::shared_ptr< std::string >  dest_ipv6 = dest_ipv6_addr.value();
-
-       if (resolve_src_dest_addr(src_ipv6_addr, *dest_ipv6, &ai_src, &ai_dest))
-       {
-           if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
-           {
-               mb_smf_mbs_session.reset(new MBSMFMBSSession(
-               mb_smf_sc_mbs_session_new_ipv6((const struct in6_addr*)src_addr,
-                               (const struct in6_addr*)dest_addr)));
-
+        if (resolve_src_dest_addr(*src_ipv6_addr.value(), *dest_ipv6_addr.value(), &ai_src, &ai_dest))
+        {
+            if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
+            {
+                mb_smf_mbs_session.reset(new MBSMFMBSSession(
+                mb_smf_sc_mbs_session_new_ipv6((const struct in6_addr*)src_addr, (const struct in6_addr*)dest_addr)));
            } else {
                ogs_error("Unable to resolve SSM addresses for IPv6 address family");
                if (ai_src) freeaddrinfo(ai_src);
                if (ai_dest) freeaddrinfo(ai_dest);
                return false;
            }
-       }
-       if (ai_src) freeaddrinfo(ai_src);
-       if (ai_dest) freeaddrinfo(ai_dest);
+        } else {
+            ogs_error("Unable to resolve SSM addresses for IPv6 address family");
+            return false;
+        }
+        if (ai_src) freeaddrinfo(ai_src);
+        if (ai_dest) freeaddrinfo(ai_dest);
 
     } else {
        ogs_error("Unable to resolve SSM addresses");
@@ -1455,28 +1442,11 @@ bool UserDataIngSession::handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance,
         UserDataIngDistSessId *ids = new UserDataIngDistSessId(context_data->ingSessionId, context_data->distSessionInfoKey);
         mb_smf_mbs_session->setCreatedCallback(reinterpret_cast<void*>(ids) /*(context_data.get()*/);
         populate_mb_smf_mbs_session(context_data, mb_smf_mbs_session);
-
-        /*
-        if ((context_data->info->getMbsDistSessState() == DistSessionState::VAL_ACTIVE ) ||
-                (context_data->info->getMbsDistSessState() == DistSessionState::VAL_ESTABLISHED)) {
-            mb_smf_mbs_session->setActivityStatus(MBS_SESSION_ACTIVITY_STATUS_ACTIVE);
-        } else {
-
-            mb_smf_mbs_session->setActivityStatus(MBS_SESSION_ACTIVITY_STATUS_INACTIVE);
-        }
-
-        context_data->MBSSession = mb_smf_mbs_session;
-
-        mb_smf_mbs_session->pushChanges();
-        */
     } else {
         ogs_info("MB-SMF SSM is not present");
     }
 
-    removeFromRegistry(xact);
-
     return true;
-
 }
 
 void UserDataIngSession::deleteMBSTFSession(ogs_sbi_xact_t *xact)

@@ -189,10 +189,10 @@ public:
     void resetMBSDistributionSessionsEstablishedFlag();
 
     std::list<std::shared_ptr< DistributionSessionDesc > > distributionSessionDescs();
-    std::optional<std::list<std::shared_ptr< ServiceScheduleDesc > >> serviceScheduleDescs();
+    std::optional<std::list<std::shared_ptr<ServiceScheduleDesc> > > serviceScheduleDescs();
     std::shared_ptr<UserServiceDesc> userServiceDesc();
 
-    std::map<std::string, std::shared_ptr< ContextData >> &distributionSessionInfos();
+    std::map<std::string, std::shared_ptr<ContextData> > &distributionSessionInfos();
     std::map<std::string, std::shared_ptr<ServiceScheduleDesc> > &getServiceScheduleDescs();
     void serviceScheduleDescsUpdate(std::shared_ptr<reftools::mbsf::MBSUserDataIngSession> mbs_user_data_ing_session);
 
@@ -206,6 +206,7 @@ public:
     static void setMBSTFDistSessionDeletedFlag(std::string &dist_session_id);
     static bool processEvent(Open5GSEvent &event);
     static bool handleMbstfDiscover(ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact);
+    static bool createMbsSession(const std::shared_ptr<ContextData> &context_data);
 
     static bool processDistSession(std::shared_ptr<reftools::mbsf::DistSession> dist_session);
     static std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> getOperatingMode(std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
