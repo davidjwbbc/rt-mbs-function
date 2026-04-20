@@ -35,7 +35,7 @@ fiveg_api_release = get_option('fiveg_api_release')
 
 fs = import('fs')
 
-uuid_dep = dependency('uuid')
+uuid_dep = dependency('uuid', required: true)
 
 #test_source_object_store = test_source_subscriber_subscription + files('''
 #  ObjectStore.cc
@@ -54,6 +54,8 @@ libmbsf_dist_sources = files('''
     ApplicationServiceDesc.hh
     AllocationRetentionPriority.cc
     AllocationRetentionPriority.hh
+    AnnouncementBundleIndexHandler.cc
+    AnnouncementBundleIndexHandler.hh
     AssociatedSessId.cc
     AssociatedSessId.hh
     AvailabilityInfo.cc
@@ -99,6 +101,8 @@ libmbsf_dist_sources = files('''
     MediaComp.hh
     MediaInfo.cc
     MediaInfo.hh
+    MultipartMime.cc
+    MultipartMime.hh
     NfServer.cc
     NfServer.hh
     Nmb2Build.cc
@@ -188,7 +192,8 @@ libmbsf = static_library('mbsf',
                     libapp_dep,
                     libcrypt_dep,
                     libscmbsmf_dep,
-                    uuid_dep],
+                    uuid_dep,
+                    libhttpxpp_dep],
     install : false)
 
 libmbsf_dep = declare_dependency(
@@ -198,7 +203,8 @@ libmbsf_dep = declare_dependency(
                     libapp_dep,
                     libcrypt_dep,
                     libscmbsmf_dep,
-                    uuid_dep])
+                    uuid_dep,
+                    libhttpxpp_dep])
 libmbsf_whole_dep = declare_dependency(
     link_whole : libmbsf,
     dependencies : [libsbi_dep,
@@ -206,7 +212,8 @@ libmbsf_whole_dep = declare_dependency(
                     libapp_dep,
                     libcrypt_dep,
                     libscmbsmf_dep,
-                    uuid_dep])
+                    uuid_dep,
+                    libhttpxpp_dep])
 
 mbsf_sources = files('''
     App.cc
@@ -230,6 +237,8 @@ executable('open5gs-mbsfd',
 
 meson.add_install_script(python3_exe, '-c', mkdir_p.format(open5gs_sysconfdir))
 conf_configuration = configuration_data()
+conf_configuration.set('localstatedir', get_option('prefix') / get_option('localstatedir'))
+conf_configuration.set('sysconfdir', get_option('prefix') / get_option('sysconfdir'))
 foreach conf_file : mbsf_config_source
     gen = configure_file(input : conf_file + '.in', configuration : conf_configuration, output : conf_file)
     meson.add_install_script(python3_exe, '-c', install_conf.format(gen.full_path(), open5gs_sysconfdir))

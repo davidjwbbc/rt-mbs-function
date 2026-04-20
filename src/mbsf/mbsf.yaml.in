@@ -31,6 +31,12 @@ mbsf:
       mbsUserServiceMaxAge: 60
       mbsUserDataIngestSessionMaxAge: 60
 
+  userServiceAnnouncement:
+    - addr: 127.0.0.67 # Nmb2 (to MBSTF)
+      port: 8888
+    - addr: 127.0.0.67 # MBS-1 (to AP)
+      port: 8889
+
   activeDistributionSessionsSoftLimit: 1000
   activeUserServicesSoftLimit: 50
   actPeriodGoToEstablishedState: 60

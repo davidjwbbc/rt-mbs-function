@@ -38,6 +38,11 @@ namespace reftools::mbsf {
     class ExternalMbsServiceArea;
 }
 
+namespace reftools::common::httpxpp {
+    class HTTPServer;
+    class HTTPRequestHandler;
+}
+
 MBSF_NAMESPACE_START
 
 class Open5GSSBIServer;
@@ -136,11 +141,13 @@ public:
 private:
     void parseCacheControl(Open5GSYamlIter &iter);
     void parseConfiguration(const std::string &pc_key, Open5GSYamlIter &iter);
+    void parseUserServAnnConfiguration(const std::string &pc_key, Open5GSYamlIter &iter);
     void parseObjectRepairParameters(Open5GSYamlIter &iter);
     int parseNotificationConfig(const std::string &pc_key, Open5GSYamlIter &iter);
     std::shared_ptr<Open5GSSBIServer> getServerForAddr(const ogs_sockaddr_t *addr, int add_to_server_type);
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(const ogs_sockaddr_t *addr) const;
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(const ogs_socknode_t *node) const;
+    void createUserServAnnRequestHandler();
 
     std::shared_ptr<std::recursive_mutex> m_userDataIngSessMutex;
     std::map<std::string, std::weak_ptr<UserService> > m_userDataIngSessIndex;
@@ -153,6 +160,9 @@ private:
 
     std::shared_ptr<std::recursive_mutex> m_notifServerMapMutex;
     std::map<std::string, std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> > m_notifServerMap;
+
+    std::shared_ptr<reftools::common::httpxpp::HTTPRequestHandler> m_userServAnnRequestHandler;
+    std::list<std::shared_ptr<reftools::common::httpxpp::HTTPServer> > m_userServAnnServers;
 };
 
 MBSF_NAMESPACE_STOP
