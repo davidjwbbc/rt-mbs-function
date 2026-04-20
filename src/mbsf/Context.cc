@@ -31,7 +31,13 @@
 #include "ogs-sbi.h"
 #include "ogs-app.h"
 
+#include <DocrootHTTPRequestHandler.hh>
+#include <HTTPServer.hh>
+#include <PathDelegatorHTTPRequestHandler.hh>
+#include <SockAddr.hh>
+
 #include "common.hh"
+#include "AnnouncementBundleIndexHandler.hh"
 #include "App.hh"
 #include "Open5GSNetworkFunction.hh"
 #include "Open5GSSBIHeader.hh"
@@ -53,6 +59,12 @@ using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::MbsServiceArea;
 using reftools::mbsf::MbsSessionId;
 
+HTTPXPP_NAMESPACE_USING(DocrootHTTPRequestHandler);
+HTTPXPP_NAMESPACE_USING(HTTPRequestHandler);
+HTTPXPP_NAMESPACE_USING(HTTPServer);
+HTTPXPP_NAMESPACE_USING(PathDelegatorHTTPRequestHandler);
+HTTPXPP_NAMESPACE_USING(SockAddr);
+
 extern ogs_sbi_server_actions_t ogs_sbi_server_actions;
 
 MBSF_NAMESPACE_START
@@ -71,6 +83,8 @@ Context::Context()
     ,m_userDataIngStatSubscs()
     ,m_notifServerMapMutex(new std::recursive_mutex)
     ,m_notifServerMap()
+    ,m_userServAnnRequestHandler()
+    ,m_userServAnnServers()
 {
 }
 
@@ -191,6 +205,21 @@ bool Context::parseConfig()
                             throw std::out_of_range(std::format("Bad configuration node at mbsf.{}", mbsf_key));
                         }
                     } while (notificationListener_iter.type() == YAML_SEQUENCE_NODE);
+                } else if (mbsf_key == "userServiceAnnouncement") {
+                    Open5GSYamlIter user_serv_announce_iter(mbsf_iter);
+                    do {
+                        if (user_serv_announce_iter.type() == YAML_MAPPING_NODE) {
+                            parseUserServAnnConfiguration(mbsf_key, user_serv_announce_iter);
+                        } else if (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE) {
+                            if (!user_serv_announce_iter.next()) break;
+                            Open5GSYamlIter user_serv_announce_seq_iter(user_serv_announce_iter);
+                            parseUserServAnnConfiguration(mbsf_key, user_serv_announce_seq_iter);
+                        } else if (user_serv_announce_iter.type() == YAML_SCALAR_NODE) {
+                            break;
+                        } else {
+                            throw std::out_of_range(std::format("Bad configuration node at mbsf.{}", mbsf_key));
+                        }
+                    } while (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE);
                 } else {
                     ogs_warn("Unknown key `mbsf.%s` in configuration", mbsf_key.c_str());
                 }
@@ -512,6 +541,50 @@ void Context::parseConfiguration(const std::string &pc_key, Open5GSYamlIter &ite
     if (addr) ogs_freeaddrinfo(addr);
     ogs_socknode_remove_all(&list);
     ogs_socknode_remove_all(&list6);
+}
+
+void Context::parseUserServAnnConfiguration(const std::string &pc_key, Open5GSYamlIter &iter) {
+    in_port_t port = 0;
+    const char *addr = nullptr;
+    
+    while (iter.next()) {
+        std::string sbi_key(iter.key());
+        if (sbi_key == "addr") {
+            addr = iter.value();;
+        } else if (sbi_key == "port") {
+            const char *v = iter.value();
+            if (v) port = atoi(v);
+        } else {
+            ogs_warn("unknown key `%s`", sbi_key.c_str());
+        }
+    }
+    if (port == 0){
+        ogs_warn("Specify the [%s] port, otherwise a random port will be used", pc_key.c_str());
+    }
+
+    SockAddr sa(AF_UNSPEC, addr, port);
+
+    auto it = std::find_if(m_userServAnnServers.begin(), m_userServAnnServers.end(), [&sa](const std::shared_ptr<HTTPServer> &svr) -> bool { return svr->listenAddress() == sa; });
+    if (it == m_userServAnnServers.end()) {
+        // new address so create new server
+        createUserServAnnRequestHandler();
+        auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
+        m_userServAnnServers.emplace_back(svr);
+        ogs_debug("%s", std::format("User Service Announcement server running at {}", svr->listenAddress()).c_str());
+    } // else already have server for that address
+}
+
+void Context::createUserServAnnRequestHandler()
+{
+    if (m_userServAnnRequestHandler) return;
+    const std::string path{"."};
+    auto announce_index = std::shared_ptr<AnnouncementBundleIndexHandler>(new AnnouncementBundleIndexHandler);
+    auto docroot_handler = std::shared_ptr<DocrootHTTPRequestHandler>(new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index)));
+    docroot_handler->addMimeType("sdp", "application/sdp");
+    auto handler = std::shared_ptr<PathDelegatorHTTPRequestHandler>(new PathDelegatorHTTPRequestHandler({
+        {"/x-5gmag-service-announcements/v1/user-data-ingest-session/", std::static_pointer_cast<HTTPRequestHandler>(docroot_handler)}
+    }));
+    m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
 }
 
 std::vector <std::shared_ptr<Open5GSSockAddr> > Context::MBSFUserServicesAddresses()

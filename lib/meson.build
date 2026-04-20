@@ -1,6 +1,6 @@
 # License: 5G-MAG Public License (v1.0)
-# Author(s): David Waring <david.waring@bbc.co.uk>
-# Copyright: (C) 2025 British Broadcasting Corporation
+# Author(s): David Waring <david.waring2@bbc.co.uk>
+# Copyright: (C) 2026 British Broadcasting Corporation
 #
 # Licensed under the License terms and conditions for use, reproduction, and
 # distribution of 5G-MAG software (the “License”).  You may not use this file
@@ -13,10 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-libuuid_dep=dependency('uuid', required:true)
-
-#test_object_store_exe = executable('test_ObjectStore', 'test_ObjectStore.cc', test_source_object_store, install:false, include_directories:[libmbsf_libinc, libinc])
-#test('test_object_store', test_object_store_exe, verbose: true, timeout: 600, protocol: 'exitcode')
-
-test_http_server = executable('test_http_server', 'test_http_server.cc', dependencies : [libhttpxpp_dep], install:false)
-test('test_http_server', test_http_server, verbose: true, timeout: 600, protocol: 'exitcode')
+subdir('http_server')
