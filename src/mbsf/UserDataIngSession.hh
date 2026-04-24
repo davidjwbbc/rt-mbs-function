@@ -61,6 +61,7 @@ class Open5GSSBIObject;
 class Open5GSTimer;
 class ServiceScheduleDesc;
 class UserService;
+class UserServiceAnnBundle;
 class UserServiceDesc;
 
 class UserDataIngSession {
@@ -120,6 +121,9 @@ public:
     UserDataIngSession(const UserDataIngSession &other) = delete;
     UserDataIngSession &operator=(UserDataIngSession &&other) = delete;
     UserDataIngSession &operator=(const UserDataIngSession &other) = delete;
+
+    UserDataIngSession(const std::string &user_data_ing_session_id, const std::string &mbs_user_service_id,
+		    const std::map<std::string, std::shared_ptr< DistributionSessionInfo > > &distribution_session_infos);
 
     virtual ~UserDataIngSession();
 
@@ -188,6 +192,9 @@ public:
     void resetMBSDistributionSessionsTerminatedFlag();
     void resetMBSDistributionSessionsEstablishedFlag();
 
+    bool isMBSSessionCreated(const std::string &key);
+    bool hasMbstfResponded(const std::string &key);
+
     std::list<std::shared_ptr< DistributionSessionDesc > > distributionSessionDescs();
     std::optional<std::list<std::shared_ptr<ServiceScheduleDesc> > > serviceScheduleDescs();
     std::shared_ptr<UserServiceDesc> userServiceDesc();
@@ -199,6 +206,7 @@ public:
     static const char *localEventGetName( ogs_event_t *event);
 
     static const std::shared_ptr<UserDataIngSession> &find(const std::string &id); // throws std::out_of_range if id does not exist
+    static const std::shared_ptr<UserDataIngSession> &locate(const std::string &id); // throws std::out_of_range if id does not exist
 
     static std::shared_ptr< UserDataIngSession::ContextData > setDistSessionId(std::shared_ptr< UserDataIngSession::ContextData > context_data, std::string dist_session_id);
     static void setMBSSessionFlag(void *data);
@@ -236,6 +244,12 @@ public:
     bool checkIfAllMBSDistributionSessionsEstablishedOrActive();
     const std::shared_ptr<UserService> &mbsUserService();
 
+    bool distributionSessionInfoHasMbstfandMbsSession(const std::string &key);
+    bool userDataIngSessionForServiceAnnChannel(std::shared_ptr<UserDataIngDistSessId> ids);
+    bool isUserServiceAnnouncementChannel(const std::string &distribution_session_info_key);
+    void userServiceAnnChannelDistributionSessionInfo();
+
+    static void requiresUserServiceAnnouncement(std::shared_ptr<UserDataIngSession> user_data_ing_session);
     static void changeDistSessionState(void *data);
     static void currentDistSessionState(void *data);
 
@@ -267,6 +281,7 @@ public:
 private:
     void updateContexts(ogs_pool_id_t stream_id, std::shared_ptr<Open5GSSBIRequest> &request);
     void _changeDistSessionState();
+    UserDataIngSession &setUserServiceAnnBundler(std::shared_ptr<UserDataIngSession> user_data_ing_session);
 
     static std::recursive_mutex s_registry_mutex;
     static std::map<ogs_sbi_xact_t *, std::shared_ptr< UserDataIngDistSessId >> s_xactRegistry;
@@ -282,6 +297,7 @@ private:
     std::unique_ptr<Open5GSTimer> m_activePeriodsTimer;
     bool m_startTimer;
     int32_t m_serviceScheduleDescriptionVersion; // next ver no.
+    std::shared_ptr<UserServiceAnnBundle> m_userServiceAnnBundle;
 
     //key: Dist Session Infos present in this User Data Ingest Session
     std::map<std::string, std::shared_ptr< ContextData >> m_distributionSessionInfos;
@@ -292,6 +308,7 @@ private:
 
     std::shared_ptr<std::recursive_mutex> m_serviceScheduleDescMutex;
     std::map<std::string, std::shared_ptr<ServiceScheduleDesc> > m_serviceScheduleDescs;
+
 };
 
 MBSF_NAMESPACE_STOP

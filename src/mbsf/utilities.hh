@@ -33,6 +33,8 @@ std::string time_point_to_iso8601_utc_str(const std::chrono::system_clock::time_
 std::chrono::system_clock::time_point to_time_point_iso8601(const std::string &datetime);
 std::string time_t_to_str(time_t time);
 
+bool validate_mbr(const std::string &mbr);
+
 MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:

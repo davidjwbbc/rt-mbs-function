@@ -248,6 +248,14 @@ bool UserService::processEvent(Open5GSEvent &event)
                             return true;
                         }
 
+			if(!checkAndSetUserServiceAnnouncementChannel(mbs_user_service, true)) {
+                            static const char *err = "MBSF Cannot handle User Service Announcement.";
+                            ogs_error("%s", err);
+                            ogs_assert(true == NfServer::sendError(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST, 1, message,
+                                                                    app_meta, api, "Bad MBSF User Service", err));
+                            return true;
+                        }
+
                         {
                             std::string txt(mbs_user_service.serialise());
                             ogs_debug("Request Parsed JSON: %s", txt.c_str());
@@ -567,6 +575,51 @@ bool UserService::isServiceAnnModePassedBack()
     }
     return false;
 }
+
+
+bool UserService::canMbsfHandleServiceAnnouncementModes(const fiveg_mag_reftools::CJson &json, bool as_request)
+{
+    MBSUserService mbs_user_service(json, as_request);
+    const reftools::mbsf::MBSUserService::ServAnnModesType &service_ann_modes =  mbs_user_service.getServAnnModes();
+    for( const auto &service_ann_mode : service_ann_modes) {
+        if (!service_ann_mode.has_value()) continue;
+        if (service_ann_mode.value()->getValue() == reftools::mbsf::ServiceAnnouncementMode::VAL_VIA_MBS_DISTRIBUTION_SESSION) {
+            if(!App::self().context()->userServiceAnnouncementConfigured()) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool UserService::checkAndSetUserServiceAnnouncementChannel(const fiveg_mag_reftools::CJson &json, bool as_request)
+{
+    if(!canMbsfHandleServiceAnnouncementModes(json, as_request)) return false;
+    MBSUserService mbs_user_service(json, as_request);
+    const reftools::mbsf::MBSUserService::ServAnnModesType &service_ann_modes =  mbs_user_service.getServAnnModes();
+    for( const auto &service_ann_mode : service_ann_modes) {
+        if (!service_ann_mode.has_value()) continue;
+        if (service_ann_mode.value()->getValue() == reftools::mbsf::ServiceAnnouncementMode::VAL_VIA_MBS_DISTRIBUTION_SESSION) {
+            if(App::self().context()->userServiceAnnouncementChannel()) return true;
+            App::self().context()->setUserServiceAnnouncementChannel();
+        }
+    }
+    return true;
+}
+
+bool UserService::requiresUserServiceAnnouncement()
+{
+    if(!m_MBSUserService) return false;
+    const reftools::mbsf::MBSUserService::ServAnnModesType &service_ann_modes =  m_MBSUserService->getServAnnModes();
+    for( const auto &service_ann_mode : service_ann_modes) {
+        if (!service_ann_mode.has_value()) continue;
+        if (service_ann_mode.value()->getValue() == reftools::mbsf::ServiceAnnouncementMode::VAL_VIA_MBS_DISTRIBUTION_SESSION) {
+            return true;
+        }
+    }
+    return false;
+}
+
 MBSF_NAMESPACE_STOP
 
 /* vim:ts=8:sts=4:sw=4:expandtab:

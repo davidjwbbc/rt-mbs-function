@@ -20,6 +20,7 @@
 #include <format>
 #include <string>
 #include <sstream>
+#include <regex>
 
 #include "common.hh"
 
@@ -98,6 +99,11 @@ std::string time_t_to_str(time_t time)
     return std::string(buf);
 }
 
+bool validate_mbr(const std::string &mbr) {
+    static const std::regex mbr_regex(R"(^\s*[0-9]+(?:\.[0-9]+)?\s*(bps|Kbps|Mbps|Gbps|Tbps)\s*$)",
+                               std::regex::ECMAScript | std::regex::icase);
+    return std::regex_match(mbr, mbr_regex);
+}
 
 
 

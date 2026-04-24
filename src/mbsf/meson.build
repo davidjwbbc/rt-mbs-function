@@ -158,6 +158,10 @@ libmbsf_dist_sources = files('''
     UserDataIngStatSubsc.hh
     UserService.cc
     UserService.hh
+    UserServiceAnnBundle.cc
+    UserServiceAnnBundle.hh
+    UserServiceAnnChannel.cc
+    UserServiceAnnChannel.hh
     UserServiceDesc.cc
     UserServiceDesc.hh
     utilities.cc

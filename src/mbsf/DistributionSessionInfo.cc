@@ -29,6 +29,9 @@
 #include <stdlib.h>
 #include <cstdint>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 // App header includes
 #include "common.hh"
@@ -53,15 +56,19 @@
 #include "openapi/model/ExternalMbsServiceArea.h"
 #include "openapi/model/Event.h"
 #include "openapi/model/FECConfig.h"
+#include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/MBSDistributionSessionInfo.h"
 #include "openapi/model/MbsServiceArea.h"
 #include "openapi/model/MbsServiceInfo.h"
 #include "openapi/model/MbsSessionId.h"
 #include "openapi/model/NrRedCapUeInfo.h"
 #include "openapi/model/ObjectDistrMethInfo.h"
+#include "openapi/model/ObjDistributionOperatingMode.h"
 #include "openapi/model/PacketDistrMethInfo.h"
 #include "openapi/model/StatusSubscribeReqData.h"
 #include "openapi/model/StatusNotifyReqData.h"
+#include "openapi/model/Ssm.h"
 
 #include "mb-smf-service-consumer.h"
 
@@ -76,6 +83,8 @@ using reftools::mbsf::DistSessionEventReportList;
 using reftools::mbsf::Event;
 using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::FECConfig;
+using reftools::mbsf::IpAddr;
+using reftools::mbsf::Ipv6Addr;
 using reftools::mbsf::ObjectDistrMethInfo;
 using reftools::mbsf::MBSDistributionSessionInfo;
 using reftools::mbsf::MbsServiceArea;
@@ -84,6 +93,7 @@ using reftools::mbsf::MbsSessionId;
 using reftools::mbsf::MBSUserDataIngSession;
 using reftools::mbsf::StatusSubscribeReqData;
 using reftools::mbsf::StatusNotifyReqData;
+using reftools::mbsf::Ssm;
 
 MBSF_NAMESPACE_START
 
@@ -117,6 +127,28 @@ DistributionSessionInfo::DistributionSessionInfo(const std::shared_ptr<MBSDistri
     ,m_dataIngestSessionDeactivated(false)
 {
     validate();
+}
+
+DistributionSessionInfo::DistributionSessionInfo(
+        std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode,
+        std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method,
+        const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids,
+        const std::shared_ptr< reftools::mbsf::DistributionMethod > distribution_method,
+        const std::string &ssm_source_address, const std::string &ssm_destination_address,
+        const std::string &mbr,
+        std::optional<std::shared_ptr< reftools::mbsf::DistSessionState > > dist_session_state)
+    :m_mbsDistributionSessionInfo(nullptr)
+    ,m_eventSubscriptions()
+    ,m_eventTimestamps()
+    ,m_statusNotifyReqData(nullptr)
+    ,m_mbsDistributionSessionInfoSubscription(nullptr)
+    ,m_availabilityInfo(nullptr)
+    ,m_mutex()
+    ,m_dataIngestSessionEstablished(false)
+    ,m_dataIngestSessionTerminated(false)
+
+{
+    setMbsDistributionSessionInfo(operating_mode, obj_acquisition_method, acq_ids, distribution_method, ssm_source_address, ssm_destination_address, mbr, dist_session_state);
 }
 
 DistributionSessionInfo::~DistributionSessionInfo()
@@ -578,6 +610,108 @@ void DistributionSessionInfo::continueStateTransitions(const std::shared_ptr<Use
             ing_sess->sendLocalEventPatch(context->distSessionInfoKey);
         }
     }
+}
+
+void DistributionSessionInfo::setMbsDistributionSessionInfo(
+                std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode,
+                std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method,
+                const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids,
+                const std::shared_ptr< DistributionMethod > distribution_method,
+                const std::string &ssm_source_address, const std::string &ssm_destination_address,
+                const std::string &mbr,
+                std::optional<std::shared_ptr< DistSessionState > > dist_session_state)
+{
+    const std::shared_ptr<reftools::mbsf::ObjectDistrMethInfo > obj_distr_method_info = populateObjectDistrMethInfo(operating_mode, obj_acquisition_method, acq_ids);
+    const std::shared_ptr<reftools::mbsf::MbsSessionId > mbs_session_id = populateMbsSessionId(ssm_source_address, ssm_destination_address);
+
+    m_mbsDistributionSessionInfo.reset(new MBSDistributionSessionInfo());
+    m_mbsDistributionSessionInfo->setObjDistrInfo(obj_distr_method_info);
+    m_mbsDistributionSessionInfo->setMbsSessionId(mbs_session_id);
+    m_mbsDistributionSessionInfo->setDistrMethod(distribution_method);
+    m_mbsDistributionSessionInfo->setMaxContBitRate(mbr);
+    m_mbsDistributionSessionInfo->setMbsDistSessState(dist_session_state);
+
+}
+
+const std::shared_ptr<reftools::mbsf::ObjectDistrMethInfo > DistributionSessionInfo::populateObjectDistrMethInfo(std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode, std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method, const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids)
+{
+    std::shared_ptr<reftools::mbsf::ObjectDistrMethInfo > obj_distr_info = nullptr;
+
+    obj_distr_info.reset(new ObjectDistrMethInfo());
+    obj_distr_info->setOperatingMode(operating_mode);
+    obj_distr_info->setObjAcqMethod(obj_acquisition_method);
+    obj_distr_info->setObjAcqIds(acq_ids);
+
+    return obj_distr_info;
+}
+
+const std::shared_ptr<reftools::mbsf::MbsSessionId > DistributionSessionInfo::populateMbsSessionId(const std::string &ssm_source_address, const std::string &ssm_destination_address)
+{
+
+    std::shared_ptr<reftools::mbsf::MbsSessionId > mbs_session_id = nullptr;
+    const std::shared_ptr<reftools::mbsf::Ssm> ssm = populateSsm(ssm_source_address, ssm_destination_address);
+    mbs_session_id.reset(new MbsSessionId());
+    mbs_session_id->setSsm(std::move(ssm));
+    return mbs_session_id;
+
+}
+
+const std::shared_ptr<reftools::mbsf::Ssm> DistributionSessionInfo::populateSsm(const std::string &ssm_source_address, const std::string &ssm_destination_address)
+{
+    if(ssm_source_address.empty() || ssm_destination_address.empty()) return nullptr;
+
+    addrinfo hints{};
+    hints.ai_flags = AI_NUMERICHOST;   // Only accept numeric IPs
+    hints.ai_family = AF_UNSPEC;       // Accept both IPv4 and IPv6
+
+    addrinfo *src_info = nullptr;
+    addrinfo *dst_info = nullptr;
+
+    std::shared_ptr<reftools::mbsf::IpAddr> src_ip_addr = nullptr;
+    std::shared_ptr<reftools::mbsf::IpAddr> dst_ip_addr = nullptr;
+
+    std::shared_ptr<reftools::mbsf::Ssm> ssm = nullptr;
+
+    // Parse source
+    if (getaddrinfo(ssm_source_address.c_str(), nullptr, &hints, &src_info) != 0) {
+        return nullptr;
+    }
+
+    // Parse destination
+    if (getaddrinfo(ssm_destination_address.c_str(), nullptr, &hints, &dst_info) != 0) {
+        freeaddrinfo(src_info);
+        return nullptr;
+    }
+
+    // Check if both families match
+    if (src_info->ai_family == dst_info->ai_family) {
+        src_ip_addr.reset(new IpAddr());
+        dst_ip_addr.reset(new IpAddr());
+        if (src_info->ai_family == AF_INET) {
+            src_ip_addr->setIpv4Addr(ssm_source_address);
+            dst_ip_addr->setIpv4Addr(ssm_destination_address);
+        } else if (src_info->ai_family == AF_INET6) {
+            std::shared_ptr<reftools::mbsf::Ipv6Addr> src_ipv6_addr = nullptr;
+            std::shared_ptr<reftools::mbsf::Ipv6Addr> dst_ipv6_addr = nullptr;
+            src_ipv6_addr.reset(new Ipv6Addr(ssm_source_address));
+            dst_ipv6_addr.reset(new Ipv6Addr(ssm_destination_address));
+
+	    src_ip_addr->setIpv6Addr(src_ipv6_addr);
+            dst_ip_addr->setIpv6Addr(dst_ipv6_addr);
+
+        }
+    }
+
+    if(src_ip_addr && dst_ip_addr) {
+        ssm.reset(new Ssm());
+        ssm->setSourceIpAddr(src_ip_addr);
+        ssm->setDestIpAddr(dst_ip_addr);
+    }
+
+    freeaddrinfo(src_info);
+    freeaddrinfo(dst_info);
+    return ssm;
+
 }
 
 MBSF_NAMESPACE_STOP

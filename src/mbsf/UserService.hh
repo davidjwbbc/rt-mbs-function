@@ -85,6 +85,10 @@ public:
     std::list<std::shared_ptr<UserServiceDesc::serviceNameLanguageDescription>> UserServiceDescriptionDescs();
     std::list<std::shared_ptr<UserServiceDesc::serviceNameLanguageDescription>> UserServiceDescriptionNames();
 
+    bool requiresUserServiceAnnouncement();
+    static bool canMbsfHandleServiceAnnouncementModes(const fiveg_mag_reftools::CJson &json, bool as_request);
+    static bool checkAndSetUserServiceAnnouncementChannel(const fiveg_mag_reftools::CJson &json, bool as_request);
+
 private:
     std::shared_ptr<reftools::mbsf::MBSUserService> m_MBSUserService;
     SysTimeMS m_generated;
