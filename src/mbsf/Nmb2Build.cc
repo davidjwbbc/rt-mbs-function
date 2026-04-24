@@ -152,7 +152,8 @@ ogs_sbi_request_t *Nmb2Build::buildNmb2DistSession(void *context, void *data) {
     //std::shared_ptr< UserDataIngSession::UserDataIngDistSessId> ids_ptr = std::make_shared<UserDataIngSession::UserDataIngDistSessId>(*ids);
 
     try {
-        std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(ids_ptr->first);
+        //std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::find(ids_ptr->first);
+	std::shared_ptr<UserDataIngSession> ing_session = UserDataIngSession::locate(ids_ptr->first);
         std::shared_ptr<UserDataIngSession::ContextData> context_data_ptr(ing_session->getDistributionSessionInfoData(ids_ptr->second));
 
         create_req_data.reset(new CreateReqData());

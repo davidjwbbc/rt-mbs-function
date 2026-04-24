@@ -61,6 +61,16 @@ public:
 
     DistributionSessionInfo(fiveg_mag_reftools::CJson &json, bool as_request);
     DistributionSessionInfo(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &mbs_distribution_session_info);
+
+    DistributionSessionInfo(
+        std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode,
+        std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method,
+        const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids,
+        const std::shared_ptr< reftools::mbsf::DistributionMethod > distribution_method,
+        const std::string &ssm_source_address, const std::string &ssm_destination_address,
+        const std::string &mbr,
+        std::optional<std::shared_ptr< reftools::mbsf::DistSessionState > > dist_session_state = std::nullopt);
+
     DistributionSessionInfo() = delete;
     DistributionSessionInfo(DistributionSessionInfo &&other) = delete;
     DistributionSessionInfo(const DistributionSessionInfo &other) = delete;
@@ -115,6 +125,20 @@ private:
     void validate() const;
     void contextReportedState(const std::shared_ptr<UserDataIngSession> &ing_sess, reftools::mbsf::DistSessionState::Enum state);
     void continueStateTransitions(const std::shared_ptr<UserDataIngSession> &ing_sess);
+
+    void setMbsDistributionSessionInfo(
+                std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode,
+                std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method,
+                const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids,
+                const std::shared_ptr< reftools::mbsf::DistributionMethod > distribution_method,
+                const std::string &ssm_source_address, const std::string &ssm_destination_address,
+                const std::string &mbr,
+                std::optional<std::shared_ptr< reftools::mbsf::DistSessionState > > dist_session_state = std::nullopt);
+
+    const std::shared_ptr<reftools::mbsf::ObjectDistrMethInfo > populateObjectDistrMethInfo(std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> operating_mode, std::shared_ptr< reftools::mbsf::ObjAcquisitionMethod > obj_acquisition_method, const reftools::mbsf::ObjectDistrMethInfo::ObjAcqIdsType &acq_ids);
+    const std::shared_ptr<reftools::mbsf::MbsSessionId > populateMbsSessionId(const std::string &ssm_source_address, const std::string &ssm_destination_address);
+    const std::shared_ptr<reftools::mbsf::Ssm> populateSsm(const std::string &ssm_source_address, const std::string &ssm_destination_address);
+
 
     std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> m_mbsDistributionSessionInfo;
     std::map<std::string, DistributionSessionInfoSubscription> m_eventSubscriptions;

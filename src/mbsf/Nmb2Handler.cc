@@ -346,8 +346,13 @@ static bool valid_content_type(Open5GSSBIMessage &message) {
 
 static void send_error(ogs_sbi_xact_t *xact)
 {
-
-    Open5GSSBIStream stream(xact->assoc_stream_id);
+    Open5GSSBIStream stream;
+    try {
+        stream = Open5GSSBIStream(xact->assoc_stream_id);
+    } catch (std::runtime_error &ex) {
+        ogs_error("%s", ex.what());
+        return;
+    }
     ogs_assert(true == Open5GSSBIServer::sendError(stream, std::nullopt, ProblemCause::INBOUND_SERVER_ERROR,
                                                                       "Failed to create MBS Distribution Session in MBSTF"));
 }

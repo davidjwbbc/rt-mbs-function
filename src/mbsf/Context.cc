@@ -22,6 +22,7 @@
 #include <string>
 #include <cstring>
 #include <cstdint>
+#include <format>
 #include <stdexcept>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -47,8 +48,10 @@
 #include "Open5GSYamlIter.hh"
 #include "UserDataIngStatSubsc.hh"
 #include "UserService.hh"
+#include "UserServiceAnnChannel.hh"
 #include "UserDataIngSession.hh"
 #include "UniqueMBSSessionId.hh"
+#include "utilities.hh"
 #include "openapi/model/ExternalMbsServiceArea.h"
 #include "openapi/model/MbsServiceArea.h"
 #include "openapi/model/MbsSessionId.h"
@@ -83,6 +86,8 @@ Context::Context()
     ,m_userDataIngStatSubscs()
     ,m_notifServerMapMutex(new std::recursive_mutex)
     ,m_notifServerMap()
+    ,m_userServiceAnnChannelMutex(new std::recursive_mutex)
+    ,m_userServiceAnnChannel()
     ,m_userServAnnRequestHandler()
     ,m_userServAnnServers()
 {
@@ -157,6 +162,20 @@ bool Context::parseConfig()
                     } else {
                         throw std::out_of_range("Bad configuration node at mbsf.objectRepairParameters");
                      }
+
+                } else if (mbsf_key == "userServiceAnnouncement") {
+                    Open5GSYamlIter sa_array(mbsf_iter);
+                    if (sa_array.type() == YAML_MAPPING_NODE) {
+                        parseUserServiceAnnouncement(sa_array);
+                    } else if (sa_array.type() == YAML_SEQUENCE_NODE) {
+                        if (!sa_array.next()) break;
+                        Open5GSYamlIter sa_iter(sa_array);
+                        parseUserServiceAnnouncement(sa_iter);
+                    } else if (sa_array.type() == YAML_SCALAR_NODE) {
+                        break;
+                    } else {
+                        throw std::out_of_range("Bad configuration node at mbsf.userServiceAnnouncement");
+                    }
 
                 } else if (mbsf_key == "activeDistributionSessionsSoftLimit") {
                       std::string active_distribution_sessions_limit(mbsf_iter.value());
@@ -388,6 +407,43 @@ void Context::parseObjectRepairParameters(Open5GSYamlIter &iter) {
     }
 }
 
+void Context::parseUserServiceAnnouncement(Open5GSYamlIter &iter) {
+    bool has_doc_root = false;
+    while (iter.next()) {
+        std::string usac_key(iter.key());
+        std::string usac_val(iter.value());
+        try {
+            if (usac_key == "announcementRepetitionTime") {
+                userServiceAnnouncement.announcementRepetitionTime = std::stol(usac_val);
+            } else if (usac_key == "ssmPort") {
+                userServiceAnnouncement.ssmPort = std::stol(usac_val);
+            }
+
+        } catch (std::out_of_range &ex) {
+            ogs_error("Cache control value for %s of \"%s\" is too big for integer storage.", usac_key.c_str(), usac_val.c_str());
+        } catch (std::invalid_argument &ex) {
+            ogs_error("Cache control value for %s of \"%s\" is not understood as an integer.", usac_key.c_str(), usac_val.c_str());
+        }
+
+        if (usac_key == "mbr") {
+            if(!validate_mbr(usac_val)) {
+                throw std::invalid_argument(std::format("MBSF: Invalid {} in \"{}\"", usac_key, usac_val));
+            }
+            userServiceAnnouncement.mbr = std::string(usac_val);
+        } else if (usac_key == "ssmSourceAddress") {
+             userServiceAnnouncement.ssmSourceAddress = std::string(usac_val);
+        } else if (usac_key == "ssmDestinationAddress") {
+                userServiceAnnouncement.ssmDestinationAddress = std::string(usac_val);
+        } else if (usac_key == "docRoot") {
+		has_doc_root = true;
+                userServiceAnnouncement.docRoot = std::string(usac_val);
+        }
+
+    }
+    if (!has_doc_root) {
+        throw std::runtime_error("MBSF: docRoot missing in mbsf.userServiceAnnouncement configuration");
+    }
+}
 
 void Context::addUserDataIngStatSubsc(const std::shared_ptr<UserDataIngStatSubsc> &subsc)
 {
@@ -546,7 +602,7 @@ void Context::parseConfiguration(const std::string &pc_key, Open5GSYamlIter &ite
 void Context::parseUserServAnnConfiguration(const std::string &pc_key, Open5GSYamlIter &iter) {
     in_port_t port = 0;
     const char *addr = nullptr;
-    
+
     while (iter.next()) {
         std::string sbi_key(iter.key());
         if (sbi_key == "addr") {
@@ -777,6 +833,23 @@ const std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> &Context::findD
     if (it != m_notifServerMap.end()) return it->second;
     static const std::shared_ptr<UserDataIngSession::UserDataIngDistSessId> null_dist_sess_id;
     return null_dist_sess_id;
+}
+
+void Context::setUserServiceAnnouncementChannel()
+{
+    std::lock_guard<std::recursive_mutex> lock(*m_userServiceAnnChannelMutex);
+    m_userServiceAnnChannel.reset(new UserServiceAnnChannel());
+}
+
+
+bool Context::userServiceAnnouncementConfigured()
+{
+    if(userServiceAnnouncement.mbr.empty() || userServiceAnnouncement.ssmSourceAddress.empty()
+                   || userServiceAnnouncement.ssmDestinationAddress.empty())
+    {
+        return false;
+    }
+    return true;
 }
 
 MBSF_NAMESPACE_STOP
