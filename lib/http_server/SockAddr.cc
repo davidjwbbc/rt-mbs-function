@@ -1,5 +1,5 @@
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Function: SockAddr class
+ * 5G-MAG Reference Tools: HTTPx Server: SockAddr class
  ******************************************************************************
  * Copyright: (C)2026 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
@@ -275,6 +275,17 @@ SockAddr::operator std::string() const
         return std::format("[{}]:{}", ipaddr, port);
     }
     throw std::out_of_range("SockAddr can only convert IPv4 and IPv6 addresses");
+}
+
+std::size_t SockAddr::hash() const
+{
+    const char *ptr = reinterpret_cast<const char*>(m_sockaddr.get());
+    if (family() == AF_INET) {
+        return std::hash<std::string_view>{}(std::string_view(ptr, ptr+sizeof(struct sockaddr_in)));
+    } else if (family() == AF_INET6) {
+        return std::hash<std::string_view>{}(std::string_view(ptr, ptr+sizeof(struct sockaddr_in6)));
+    }
+    return std::hash<std::string_view>{}(std::string_view(ptr, ptr+sizeof(struct sockaddr_storage)));
 }
 
 HTTPXPP_NAMESPACE_STOP

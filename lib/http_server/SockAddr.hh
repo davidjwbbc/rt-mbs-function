@@ -1,7 +1,7 @@
-#ifndef _MBSF_SOCK_ADDR_HH_
-#define _MBSF_SOCK_ADDR_HH_
+#ifndef _HTTPXPP_SOCK_ADDR_HH_
+#define _HTTPXPP_SOCK_ADDR_HH_
 /******************************************************************************
- * 5G-MAG Reference Tools: MBS Function: SockAddr class
+ * 5G-MAG Reference Tools: HTTPx Server: SockAddr class
  ******************************************************************************
  * Copyright: (C)2026 British Broadcasting Corporation
  * Author(s): David Waring <david.waring2@bbc.co.uk>
@@ -70,6 +70,8 @@ public:
     const struct in_addr &ipv4Address() const;
     const struct in6_addr &ipv6Address() const;
 
+    std::size_t hash() const;
+
 private:
     std::shared_ptr<sockaddr_storage> m_sockaddr;
 };
@@ -88,8 +90,13 @@ namespace std {
             return std::format_to(ctx.out(), "{}", static_cast<std::string>(sock_addr));
         };
     };
+
+    template <>
+    struct hash<HTTPXPP_NAMESPACE_NAME(SockAddr)> {
+        std::size_t operator()(const HTTPXPP_NAMESPACE_NAME(SockAddr) &sock_addr) const { return sock_addr.hash(); };
+    };
 }
 
 /* vim:ts=8:sts=4:sw=4:expandtab:
  */
-#endif /* _MBSF_SOCK_ADDR_HH_ */
+#endif /* _HTTPXPP_SOCK_ADDR_HH_ */

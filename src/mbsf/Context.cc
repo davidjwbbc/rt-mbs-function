@@ -17,16 +17,18 @@
  * under the License.
  */
 
-#include <map>
-#include <memory>
-#include <string>
-#include <cstring>
-#include <cstdint>
-#include <format>
-#include <stdexcept>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+#include <cstdint>
+#include <cstring>
+#include <format>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 #include "ogs-core.h"
 #include "ogs-sbi.h"
@@ -72,6 +74,8 @@ extern ogs_sbi_server_actions_t ogs_sbi_server_actions;
 
 MBSF_NAMESPACE_START
 
+static std::list<SockAddr> get_sock_addrs(int family, const std::string &hostname, in_port_t port);
+
 Context::Context()
     :servers()
     ,cacheControl({60, 60, 60})
@@ -89,6 +93,7 @@ Context::Context()
     ,m_userServiceAnnChannelMutex(new std::recursive_mutex)
     ,m_userServiceAnnChannel()
     ,m_userServAnnRequestHandler()
+    ,m_userServAnnAddresses()
     ,m_userServAnnServers()
 {
 }
@@ -166,11 +171,11 @@ bool Context::parseConfig()
                 } else if (mbsf_key == "userServiceAnnouncement") {
                     Open5GSYamlIter sa_array(mbsf_iter);
                     if (sa_array.type() == YAML_MAPPING_NODE) {
-                        parseUserServiceAnnouncement(sa_array);
+                        parseUserServiceAnnouncement(mbsf_key, sa_array);
                     } else if (sa_array.type() == YAML_SEQUENCE_NODE) {
                         if (!sa_array.next()) break;
                         Open5GSYamlIter sa_iter(sa_array);
-                        parseUserServiceAnnouncement(sa_iter);
+                        parseUserServiceAnnouncement(mbsf_key, sa_iter);
                     } else if (sa_array.type() == YAML_SCALAR_NODE) {
                         break;
                     } else {
@@ -224,27 +229,18 @@ bool Context::parseConfig()
                             throw std::out_of_range(std::format("Bad configuration node at mbsf.{}", mbsf_key));
                         }
                     } while (notificationListener_iter.type() == YAML_SEQUENCE_NODE);
-                } else if (mbsf_key == "userServiceAnnouncement") {
-                    Open5GSYamlIter user_serv_announce_iter(mbsf_iter);
-                    do {
-                        if (user_serv_announce_iter.type() == YAML_MAPPING_NODE) {
-                            parseUserServAnnConfiguration(mbsf_key, user_serv_announce_iter);
-                        } else if (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE) {
-                            if (!user_serv_announce_iter.next()) break;
-                            Open5GSYamlIter user_serv_announce_seq_iter(user_serv_announce_iter);
-                            parseUserServAnnConfiguration(mbsf_key, user_serv_announce_seq_iter);
-                        } else if (user_serv_announce_iter.type() == YAML_SCALAR_NODE) {
-                            break;
-                        } else {
-                            throw std::out_of_range(std::format("Bad configuration node at mbsf.{}", mbsf_key));
-                        }
-                    } while (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE);
                 } else {
                     ogs_warn("Unknown key `mbsf.%s` in configuration", mbsf_key.c_str());
                 }
             }
         }
     }
+
+    if (m_userServiceAnnChannel && m_userServAnnAddresses.empty()) {
+        throw std::out_of_range(std::format("User Service Announcement configured without server addresses"));
+    }
+
+    startUserServAnnServers();
 
     return true;
 }
@@ -407,41 +403,55 @@ void Context::parseObjectRepairParameters(Open5GSYamlIter &iter) {
     }
 }
 
-void Context::parseUserServiceAnnouncement(Open5GSYamlIter &iter) {
+void Context::parseUserServiceAnnouncement(const std::string &pc_key, Open5GSYamlIter &iter) {
     bool has_doc_root = false;
     while (iter.next()) {
         std::string usac_key(iter.key());
-        std::string usac_val(iter.value());
+        auto conf_key = std::format("mbsf.{}.{}", pc_key, usac_key);
         try {
             if (usac_key == "announcementRepetitionTime") {
-                userServiceAnnouncement.announcementRepetitionTime = std::stol(usac_val);
+                userServiceAnnouncement.announcementRepetitionTime = std::stol(iter.value());
             } else if (usac_key == "ssmPort") {
-                userServiceAnnouncement.ssmPort = std::stol(usac_val);
+                userServiceAnnouncement.ssmPort = std::stol(iter.value());
             }
 
         } catch (std::out_of_range &ex) {
-            ogs_error("Cache control value for %s of \"%s\" is too big for integer storage.", usac_key.c_str(), usac_val.c_str());
+            ogs_error("Cache control value for %s of \"%s\" is too big for integer storage.", conf_key.c_str(), iter.value());
         } catch (std::invalid_argument &ex) {
-            ogs_error("Cache control value for %s of \"%s\" is not understood as an integer.", usac_key.c_str(), usac_val.c_str());
+            ogs_error("Cache control value for %s of \"%s\" is not understood as an integer.", conf_key.c_str(), iter.value());
         }
 
         if (usac_key == "mbr") {
-            if(!validate_mbr(usac_val)) {
-                throw std::invalid_argument(std::format("MBSF: Invalid {} in \"{}\"", usac_key, usac_val));
+            if(!validate_mbr(iter.value())) {
+                throw std::invalid_argument(std::format("MBSF: Invalid MBR value \"{}\" in {}", iter.value(), conf_key));
             }
-            userServiceAnnouncement.mbr = std::string(usac_val);
+            userServiceAnnouncement.mbr = std::string(iter.value());
         } else if (usac_key == "ssmSourceAddress") {
-             userServiceAnnouncement.ssmSourceAddress = std::string(usac_val);
+            userServiceAnnouncement.ssmSourceAddress = std::string(iter.value());
         } else if (usac_key == "ssmDestinationAddress") {
-                userServiceAnnouncement.ssmDestinationAddress = std::string(usac_val);
+            userServiceAnnouncement.ssmDestinationAddress = std::string(iter.value());
         } else if (usac_key == "docRoot") {
-		has_doc_root = true;
-                userServiceAnnouncement.docRoot = std::string(usac_val);
+	    has_doc_root = true;
+            userServiceAnnouncement.docRoot = std::string(iter.value());
+        } else if (usac_key == "server") {
+            Open5GSYamlIter user_serv_announce_iter(iter);
+            do {
+                if (user_serv_announce_iter.type() == YAML_MAPPING_NODE) {
+                    parseUserServAnnSvrConfiguration(conf_key, user_serv_announce_iter);
+                } else if (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE) {
+                    if (!user_serv_announce_iter.next()) break;
+                    Open5GSYamlIter user_serv_announce_seq_iter(user_serv_announce_iter);
+                    parseUserServAnnSvrConfiguration(conf_key, user_serv_announce_seq_iter);
+                } else if (user_serv_announce_iter.type() == YAML_SCALAR_NODE) {
+                    break;
+                } else {
+                    throw std::out_of_range(std::format("Bad configuration node at {}", conf_key));
+                }
+            } while (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE);
         }
-
     }
     if (!has_doc_root) {
-        throw std::runtime_error("MBSF: docRoot missing in mbsf.userServiceAnnouncement configuration");
+        throw std::runtime_error(std::format("MBSF: docRoot missing in mbsf.{} configuration", pc_key));
     }
 }
 
@@ -599,7 +609,7 @@ void Context::parseConfiguration(const std::string &pc_key, Open5GSYamlIter &ite
     ogs_socknode_remove_all(&list6);
 }
 
-void Context::parseUserServAnnConfiguration(const std::string &pc_key, Open5GSYamlIter &iter) {
+void Context::parseUserServAnnSvrConfiguration(const std::string &pc_key, Open5GSYamlIter &iter) {
     in_port_t port = 0;
     const char *addr = nullptr;
 
@@ -618,24 +628,27 @@ void Context::parseUserServAnnConfiguration(const std::string &pc_key, Open5GSYa
         ogs_warn("Specify the [%s] port, otherwise a random port will be used", pc_key.c_str());
     }
 
-    SockAddr sa(AF_UNSPEC, addr, port);
+    auto addresses = get_sock_addrs(AF_UNSPEC, addr, port);
+    m_userServAnnAddresses.insert(addresses.begin(), addresses.end());
+}
 
-    auto it = std::find_if(m_userServAnnServers.begin(), m_userServAnnServers.end(), [&sa](const std::shared_ptr<HTTPServer> &svr) -> bool { return svr->listenAddress() == sa; });
-    if (it == m_userServAnnServers.end()) {
+void Context::startUserServAnnServers() {
+    createUserServAnnRequestHandler();
+    for (const auto &sa : m_userServAnnAddresses) {
         // new address so create new server
-        createUserServAnnRequestHandler();
         auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
         m_userServAnnServers.emplace_back(svr);
+        svr->serverName(std::format("MBSF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
         ogs_debug("%s", std::format("User Service Announcement server running at {}", svr->listenAddress()).c_str());
-    } // else already have server for that address
+    }
 }
 
 void Context::createUserServAnnRequestHandler()
 {
     if (m_userServAnnRequestHandler) return;
-    const std::string path{"."};
-    auto announce_index = std::shared_ptr<AnnouncementBundleIndexHandler>(new AnnouncementBundleIndexHandler);
-    auto docroot_handler = std::shared_ptr<DocrootHTTPRequestHandler>(new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index)));
+    const std::string path = userServiceAnnDocRoot();
+    std::shared_ptr<AnnouncementBundleIndexHandler> announce_index{new AnnouncementBundleIndexHandler};
+    std::shared_ptr<DocrootHTTPRequestHandler> docroot_handler{new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index))};
     docroot_handler->addMimeType("sdp", "application/sdp");
     auto handler = std::shared_ptr<PathDelegatorHTTPRequestHandler>(new PathDelegatorHTTPRequestHandler({
         {"/x-5gmag-service-announcements/v1/user-data-ingest-session/", std::static_pointer_cast<HTTPRequestHandler>(docroot_handler)}
@@ -850,6 +863,28 @@ bool Context::userServiceAnnouncementConfigured()
         return false;
     }
     return true;
+}
+
+static std::list<SockAddr> get_sock_addrs(int family, const std::string &hostname, in_port_t port)
+{
+    struct addrinfo *ai = nullptr;
+    auto port_name = std::format("{}", port);
+    getaddrinfo(hostname.c_str(), port_name.c_str(), nullptr, &ai);
+    std::list<SockAddr> result;
+
+    for (auto *it = ai; it; it = it->ai_next) {
+        if (family == AF_UNSPEC || it->ai_family == family) {
+            try {
+                result.emplace_back(*it->ai_addr);
+            } catch (std::out_of_range &ex) {
+                // Ignore address families that are not handled
+            }
+        }
+    }
+
+    if (ai) freeaddrinfo(ai);
+
+    return result;
 }
 
 MBSF_NAMESPACE_STOP
