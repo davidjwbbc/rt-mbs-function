@@ -477,9 +477,8 @@ std::shared_ptr<AvailabilityInfo> DistributionSessionInfo::populateAvailabilityI
 
     const std::optional<std::shared_ptr< reftools::mbsf::MbsServiceArea > > &tgt_serv_areas = m_mbsDistributionSessionInfo->getTgtServAreas();
     const  std::optional<std::string > &mbs_fSa_id = m_mbsDistributionSessionInfo->getMbsFSAId();
-    if (!tgt_serv_areas.has_value() || !mbs_fSa_id.has_value()) return nullptr;
-    std::shared_ptr<AvailabilityInfo> availability_info(new AvailabilityInfo(m_mbsDistributionSessionInfo->getTgtServAreas(), m_mbsDistributionSessionInfo->getMbsFSAId()));
-    return availability_info;
+    if (!tgt_serv_areas.has_value() && !mbs_fSa_id.has_value()) return nullptr;
+    return std::shared_ptr<AvailabilityInfo>(new AvailabilityInfo(tgt_serv_areas, mbs_fSa_id));
 }
 
 std::optional<std::list<std::shared_ptr<AvailabilityInfo>>> DistributionSessionInfo::availabilityInfos()
@@ -487,8 +486,9 @@ std::optional<std::list<std::shared_ptr<AvailabilityInfo>>> DistributionSessionI
     if (!m_mbsDistributionSessionInfo) return std::nullopt;
     std::optional<std::list<std::shared_ptr<AvailabilityInfo>>> availability_infos = std::nullopt;
     std::shared_ptr<AvailabilityInfo> availability_info = populateAvailabilityInfo();
-    availability_infos= std::list<std::shared_ptr<AvailabilityInfo>>();
-    availability_infos->push_back(availability_info);
+    if (availability_info) {
+        availability_infos = std::list<std::shared_ptr<AvailabilityInfo>>{availability_info};
+    }
     return availability_infos;
 }
 

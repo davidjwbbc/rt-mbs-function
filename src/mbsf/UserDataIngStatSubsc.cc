@@ -776,19 +776,15 @@ bool UserDataIngStatSubsc::processEvent(Open5GSEvent &event)
                 }
 
                 if (user_data_ing_session_id == id && stat_subsc->checkForUserServiceAnn()) {
-                    std::list<std::string> object_locators = user_data_ing_session.getObjectLocators();
-                    if(!object_locators.size() || user_data_ing_session.userSerAdNotificationSent()) break;
-                    for(const std::string &object_locator : object_locators) {
-                        std::shared_ptr< Event > event = nullptr;
-                        event.reset(new Event());
+                    if (user_data_ing_session.userSerAdNotificationSent()) break;
+                    user_data_ing_session.forEachObjectLocator([&stat_subsc](const std::string &object_locator){
+                        std::shared_ptr<Event> event(new Event());
                         *event = Event::VAL_USER_SER_AD;
                         stat_subsc->setSubscribedEventTime(event, DateTime::clock::now(), object_locator);
                         stat_subsc->sendNotifications();
-                    }
+                    });
                     user_data_ing_session.userSerAdNotificationSent(true);
-
                 }
-
             }
 
             user_data_ing_session_event.releaseEventData();

@@ -363,16 +363,18 @@ void UserServiceAnnChannel::sendCarouselRequest()
 
     {
         std::lock_guard<decltype(m_announcementChannelMutex)::element_type> lock(*m_announcementChannelMutex);
+        size_t pre_expire_size = m_userDataIngSessions.size();
         m_userDataIngSessions.remove_if(&UserServiceAnnChannel::isExpired);
+        ogs_debug("Preparing carousel of a possible %zu sessions (after %zu expired sessions removed)", m_userDataIngSessions.size(), pre_expire_size - m_userDataIngSessions.size());
         for(const auto &ing_session : m_userDataIngSessions) {
             auto session = ing_session.lock();
-            if(!session || !session->isUserServiceAnnBundleAvailable() || session->isIncludedInCarouselObjectManifest()) continue;
-            carousel_objects.splice(carousel_objects.end(), session->getCarouselObjects());
+            if(!session || !session->isUserServiceAnnBundleAvailable()) continue;
+            carousel_objects.push_back(session->getCarouselObject());
             session->includedInCarouselObjectManifest(true);
         }
     }
 
-    if(carousel_objects.size()) {
+    if (carousel_objects.size()) {
         carousel_object_manifest.reset(new ObjManifest(carousel_objects));
         sendCarouselObjectManifest(carousel_object_manifest);
     }
@@ -387,7 +389,7 @@ void UserServiceAnnChannel::sendCarouselObjectManifest(const std::shared_ptr<Obj
     std::optional<std::string> push_id = m_userServiceAnnChannelDataIngSession->objectAcquisitionIdPush(USER_SERVICE_ANN_CHANNEL);
 
     if(!base_url || base_url.value().empty() || !push_id || push_id.value().empty() ) return;
-    ogs_debug("UserServiceAnnChannel[%p]: base URL = %s", this, base_url.value().c_str());
+    ogs_debug("UserServiceAnnChannel[%p]: Push URL = %s%s", this, base_url.value().c_str(), push_id.value().c_str());
 
     if(!carousel_object_manifest) return;
 

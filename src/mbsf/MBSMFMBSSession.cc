@@ -212,7 +212,7 @@ bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
             switch (mbsf_event->id) {
             case MBSF_LOCAL_EVENT_MBS_SESSION_NOTIFY:
                 MBSMFMBSSession::processMbsSessionNotify(mbsf_event->notification,  event->sbi.data);
-                return true;
+                break;
             case MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT:
                 {
                     UserDataIngDistSessId *ids = reinterpret_cast<UserDataIngDistSessId*>(event->sbi.data);
@@ -256,26 +256,29 @@ bool MBSMFMBSSession::processEvent(Open5GSEvent &MBSMFEvent)
                                             MBSProblemCause::lookup(std::string(mbsf_event->problem_details->cause));
                                 if (cause.has_value()) {
                                     UserDataIngSession::setMBSSessionFailureFlag(*ids, cause.value(), problem_detail);
-                                    return true;
                                 }
                             } else {
                                 UserDataIngSession::setMBSSessionFailureFlag(*ids, ProblemCause::INBOUND_SERVER_ERROR, problem_detail);
                             }
-                            return true;
                         }
                         UserDataIngSession::setMBSSessionFailureFlag(*ids, ProblemCause::INBOUND_SERVER_ERROR);
                     } else {
                         UserDataIngSession::setMBSSessionFailureFlag(*ids, ProblemCause::INBOUND_SERVER_ERROR);
                     }
                 }
-                return true;
+                break;
             case MBSF_LOCAL_EVENT_MBS_SESSION_DELETED:
                 UserDataIngSession::setMBSSessionDeleted(*reinterpret_cast<UserDataIngDistSessId*>(event->sbi.data));
-                return true;
+                break;
             default:
                 ogs_warn("Unexpected local event: %s", mbsfEventGetName(event));
-                return true;
+                break;
             }
+            if (mbsf_event && mbsf_event->problem_details) {
+                OpenAPI_problem_details_free(mbsf_event->problem_details);
+                mbsf_event->problem_details = nullptr;
+            }
+            return true;
         }
     }
     return false;
@@ -341,7 +344,7 @@ void MBSMFMBSSession::pushChanges()
     }
 }
 
-void MBSMFMBSSession::mbsSessionCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, void *data)
+void MBSMFMBSSession::mbsSessionCallback(mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_t *problem_details, void *data)
 {
     MBSMFMBSSession *mbs_session = reinterpret_cast<MBSMFMBSSession*>(data);
 
@@ -352,10 +355,7 @@ void MBSMFMBSSession::mbsSessionCallback(mb_smf_sc_mbs_session_t *session, int r
 
     /* queue result event */
     sendLocalEvent((result != OGS_DONE)?MBSF_LOCAL_EVENT_MBS_SESSION_CREATE_RESULT:MBSF_LOCAL_EVENT_MBS_SESSION_DELETED,
-                   session, result,
-                   problem_details?OpenAPI_problem_details_copy(nullptr, const_cast<OpenAPI_problem_details_s*>(problem_details))
-                                  :nullptr,
-                   mbs_session->m_id);
+                   session, result, problem_details, mbs_session->m_id);
 
     if (result == OGS_DONE) {
         mbs_session->m_session = nullptr;
@@ -492,7 +492,7 @@ void MBSMFMBSSession::sendLocalNotifyEvent(LocalEventId event_id, const mb_smf_s
     ogs_pollset_notify(ogs_app()->pollset);
 }
 
-void MBSMFMBSSession::sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_s*  problem_details, const UserDataIngDistSessId &ids)
+void MBSMFMBSSession::sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_session_t *session, int result, const OpenAPI_problem_details_t *problem_details, const UserDataIngDistSessId &ids)
 {
     int rv;
 
@@ -505,7 +505,9 @@ void MBSMFMBSSession::sendLocalEvent(LocalEventId event_id, mb_smf_sc_mbs_sessio
     event->event.sbi.data = reinterpret_cast<void*>(const_cast<UserDataIngDistSessId*>(&ids));
 
     event->mbs_session = session;
-    event->problem_details = problem_details;
+    if (problem_details) {
+        event->problem_details = OpenAPI_problem_details_copy(nullptr, const_cast<OpenAPI_problem_details_t*>(problem_details));
+    }
     event->result = result;
 
     rv = ogs_queue_push(ogs_app()->queue, &event->event);

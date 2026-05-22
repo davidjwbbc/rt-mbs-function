@@ -300,13 +300,10 @@ public:
     void configureUserServiceAnnouncementBundler();
     void userServiceAnnBundled();
     std::shared_ptr<reftools::mbsf::DistSessionState> stateOfDistSession(const std::string &key);
-    void addCarouselObject(std::shared_ptr<CarouselObject > carousel_object);
-    std::list<std::shared_ptr<CarouselObject >> getCarouselObjects() const;
-    void resetCarouselObjects();
-    void forEachObject(std::function<void(const std::string &)> fn);
-    void addObjectLocator(std::string object_locator);
-    std::list<std::string> getObjectLocators() const;
-    void resetObjectLocators();
+    void setCarouselObject(const std::shared_ptr<CarouselObject> &carousel_object);
+    std::shared_ptr<CarouselObject> getCarouselObject() const;
+    void resetCarouselObject();
+    void forEachObjectLocator(std::function<void(const std::string &)> fn) const;
     void userSerAdNotificationSent(bool notification_sent) const;
 
     ActivePeriodsBase::TimeRange activeTimeRange() const { return m_activePeriods?m_activePeriods->activeTimeRange():ActivePeriodsBase::TimeRange{std::nullopt, std::nullopt}; };
@@ -344,7 +341,7 @@ private:
     void _changeDistSessionState();
     UserDataIngSession &setUserServiceAnnBundler();
     void populateCarouselObject(const std::shared_ptr<Open5GSSBINFInstance> &nf_instance);
-    void populateObjectCarousel(std::set<std::string> &user_serv_ann_server_addrs);
+    void populateObjectCarousel(const std::string &user_serv_ann_server_addr);
 
     static std::recursive_mutex s_registry_mutex;
     static std::map<ogs_sbi_xact_t*, std::shared_ptr<UserDataIngDistSessId>> s_xactRegistry;
@@ -365,9 +362,7 @@ private:
     int32_t m_serviceScheduleDescriptionVersion; // next ver no.
     std::shared_ptr<UserServiceAnnBundle> m_userServiceAnnBundle;
     std::shared_ptr<std::recursive_mutex> m_carouselObjectMutex;
-    std::list<std::shared_ptr<CarouselObject >> m_objects;
-    std::shared_ptr<std::recursive_mutex> m_objectLocatorMutex;
-    std::list<std::string> m_objectLocators;
+    std::shared_ptr<CarouselObject> m_carouselObject;
     bool m_userServiceAnnBundleAvailable;
     bool m_includedInCarouselObjectManifest;
     mutable bool m_userSerAdNotificationSent;
