@@ -35,6 +35,9 @@
 .*.swp
 *.bak
 
+# meson temporary files
+subprojects/.wraplock
+
 # common build directories
 build
 install
