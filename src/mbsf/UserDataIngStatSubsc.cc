@@ -238,8 +238,7 @@ UserDataIngStatSubsc &UserDataIngStatSubsc::update(CJson &json, bool as_request)
 void UserDataIngStatSubsc::setUserDataIngSession()
 {
     const std::string &mbs_data_ing_session_id = m_mbsUserDataIngStatSubsc.getMbsIngSessionId();
-    static const std::shared_ptr<UserDataIngSession> session = UserDataIngSession::find(mbs_data_ing_session_id);
-    m_userDataIngSession = session;
+    m_userDataIngSession = UserDataIngSession::find(mbs_data_ing_session_id);
 }
 
 std::shared_ptr< EventNotification > UserDataIngStatSubsc::makeEventNotification(std::shared_ptr< Event > event, std::string time_stamp,
