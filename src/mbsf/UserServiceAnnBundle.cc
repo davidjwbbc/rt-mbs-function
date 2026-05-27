@@ -117,6 +117,8 @@ void UserServiceAnnBundle::worker()
 
         m_userServiceAnnThreadRunning = true;
 
+        clearServingFiles();
+
         if(!writeAnnouncement()) {
             ogs_error("Unable to write announcement.json to local file system");
         }

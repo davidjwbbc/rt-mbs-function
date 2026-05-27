@@ -61,6 +61,7 @@ public:
 
     UserServiceAnnBundle &addToServingFiles(const std::string &file_name) { m_nameOfFilesToServe.push_back(file_name); return *this; };
     UserServiceAnnBundle &removeFromServingFiles(const std::string &file_name) { m_nameOfFilesToServe.remove(file_name); return *this; };
+    UserServiceAnnBundle &clearServingFiles() { m_nameOfFilesToServe.clear(); return *this; };
 
     const std::list<std::string> &filesToServe() const { return m_nameOfFilesToServe; };
 
