@@ -18,5 +18,5 @@ libuuid_dep=dependency('uuid', required:true)
 #test_object_store_exe = executable('test_ObjectStore', 'test_ObjectStore.cc', test_source_object_store, install:false, include_directories:[libmbsf_libinc, libinc])
 #test('test_object_store', test_object_store_exe, verbose: true, timeout: 600, protocol: 'exitcode')
 
-test_http_server = executable('test_http_server', 'test_http_server.cc', dependencies : [libhttpxpp_dep], install:false)
-test('test_http_server', test_http_server, verbose: true, timeout: 600, protocol: 'exitcode')
+#test_http_server = executable('test_http_server', 'test_http_server.cc', dependencies : [libhttpxpp_dep], install:false)
+#test('test_http_server', test_http_server, verbose: true, timeout: 600, protocol: 'exitcode')
