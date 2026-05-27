@@ -672,6 +672,10 @@ bool UserDataIngStatSubsc::processEvent(Open5GSEvent &event)
 
                             App::self().context()->addUserDataIngStatSubsc(user_data_ing_stat_subsc);
                             user_data_ing_stat_subsc->processEventSubscs();
+                            {
+                                auto user_data_ing_sess = user_data_ing_stat_subsc->m_userDataIngSession.lock();
+                                if (user_data_ing_sess) user_data_ing_sess->pushNotificationsEvent();
+                            }
 
                             CJson user_data_ing_stat_subsc_json(user_data_ing_stat_subsc->json(false));
                             std::string body(user_data_ing_stat_subsc_json.serialise());
@@ -900,7 +904,6 @@ void UserDataIngStatSubsc::processEventSubscs() {
         std::shared_ptr<DistributionSessionInfo> distribution_session_info = context_data->distributionSessionInfo;
         distribution_session_info->addEventSubscription(weak_from_this(), event);
     }
-
 }
 
 void UserDataIngStatSubsc::resetEventSubscriptions() {
