@@ -62,7 +62,7 @@ public:
 
     void notify() { m_announcementChannelChange.notify_all(); };
     void sendCarouselRequest();
-    void sendCarouselObjectManifest(const std::shared_ptr<ObjManifest> carousel_object_manifest);
+    void sendCarouselObjectManifest(const std::shared_ptr<ObjManifest> &carousel_object_manifest);
     bool userServiceAnnBundleAvailable();
     void resetClient();
     bool processClientResponse(const Open5GSEvent &event);

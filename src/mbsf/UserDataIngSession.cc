@@ -881,16 +881,14 @@ void UserDataIngSession::addToDistributionSessionInfos(const std::string &key, c
 
 }
 
-std::shared_ptr< UserDataIngSession::ContextData > UserDataIngSession::getDistributionSessionInfoData(const std::string &key)
+std::shared_ptr<UserDataIngSession::ContextData> UserDataIngSession::getDistributionSessionInfoData(const std::string &key) const
 {
-
     std::lock_guard<decltype(m_distSessInfosMutex)::element_type> lock(*m_distSessInfosMutex);
     auto it = m_distributionSessionInfos.find(key);
     if (it != m_distributionSessionInfos.end()) {
         return it->second;
     }
     return nullptr;
-
 }
 
 void UserDataIngSession::removeDistributionSessionInfo(const std::string &key)
@@ -2523,42 +2521,41 @@ const std::shared_ptr<UserService> &UserDataIngSession::mbsUserService()
 bool UserDataIngSession::isMBSSessionCreated(const std::string &key)
 {
     std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
-    if (context_data && context_data->MBSSessionStatus == MBSSessionState::CREATED) return true;
+    if (context_data) return context_data->MBSSessionStatus == MBSSessionState::CREATED;
     return false;
 }
 
 bool UserDataIngSession::hasMbstfResponded(const std::string &key)
 {
-     std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
-    if (context_data && context_data->receivedMBSTFResponse) return true;
+    std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
+    if (context_data) return context_data->receivedMBSTFResponse;
     return false;
+}
 
+const DistSessionState &UserDataIngSession::lastReportedState(const std::string &key) const
+{
+    static const DistSessionState no_val_state;
+
+    std::shared_ptr<ContextData> context_data = getDistributionSessionInfoData(key);
+    if (context_data) return context_data->last_reported_state;
+    return no_val_state;
 }
 
 bool UserDataIngSession::inDesiredState(const std::string &key)
 {
-     std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
-    if (context_data && (context_data->stateUpdate || context_data->needsUpdate)) return false;
+    std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
+    if (context_data) return !context_data->stateUpdate && !context_data->needsUpdate;
     return true;
-
 }
 
-std::shared_ptr<reftools::mbsf::DistSessionState> UserDataIngSession::stateOfDistSession(const std::string &key)
+const DistSessionState &UserDataIngSession::stateOfDistSession(const std::string &key)
 {
-    std::shared_ptr<reftools::mbsf::DistSessionState> session_state_no = nullptr;
+    static const DistSessionState session_state_no_val;
     std::shared_ptr<UserDataIngSession::ContextData> context_data = getDistributionSessionInfoData(key);
     if (context_data && context_data->distSession) {
-        if (isUserServiceAnnouncementChannel(key))
-        {
-            const std::shared_ptr<UserServiceAnnChannel> ann_channel = App::self().context()->userServiceAnnouncementChannel();
-            if(ann_channel) ann_channel->notify();
-        }
-
-        return context_data->distSession->getDistSessionState();
+        return *context_data->distSession->getDistSessionState();
     }
-    session_state_no.reset(new DistSessionState());
-    *session_state_no = DistSessionState::NO_VAL;
-    return session_state_no;
+    return session_state_no_val;
 }
 
 bool UserDataIngSession::distributionSessionInfoHasMbstfandMbsSession(const std::string &key)
@@ -2704,6 +2701,17 @@ void UserDataIngSession::forEachObjectLocator(std::function<void(const std::stri
 void UserDataIngSession::userSerAdNotificationSent(bool notification_sent) const
 {
     m_userSerAdNotificationSent = notification_sent;
+}
+
+const DistSessionState &UserDataIngSession::getDistributionSessionInfoState(const std::string &key) const
+{
+    static const DistSessionState state_no_val;
+    std::shared_ptr<ContextData> context_data = getDistributionSessionInfoData(key);
+    if (context_data) {
+        const auto &state = context_data->info->getMbsDistSessState();
+        if (state) return *state.value();
+    }
+    return state_no_val;
 }
 
 void UserDataIngSession::setDistSessionState(const std::shared_ptr<DistSessionState> &state)

@@ -181,10 +181,11 @@ public:
     void updateMbstfRemovedDistSession();
     const std::shared_ptr<ServiceScheduleDesc> &findServiceScheduleDesc(const std::string &id) const;
     void addToDistributionSessionInfos(const std::string &key, const std::shared_ptr<ContextData> &context);
-    std::shared_ptr< UserDataIngSession::ContextData > getDistributionSessionInfoData(const std::string &key);
+    std::shared_ptr< UserDataIngSession::ContextData > getDistributionSessionInfoData(const std::string &key) const;
     void removeDistributionSessionInfo(const std::string &key);
     void deleteDistributionSessionInfo(const std::string &key);
     void clearDistributionSessionInfos();
+    const reftools::mbsf::DistSessionState &getDistributionSessionInfoState(const std::string &key) const;
 
     void removeContextData(const std::shared_ptr<ContextData> &context_data);
 
@@ -212,7 +213,7 @@ public:
 
     bool isMBSSessionCreated(const std::string &key);
     bool hasMbstfResponded(const std::string &key);
-    reftools::mbsf::DistSessionState lastReportedState(const std::string &key);
+    const reftools::mbsf::DistSessionState &lastReportedState(const std::string &key) const;
     std::optional<std::string> objectIngestBaseUrl(const std::string &key);
     std::optional<std::string> objectAcquisitionIdPush(const std::string &key);
     std::optional<std::string> getObjectAcquisitionIdPush(const std::shared_ptr<reftools::mbsf::DistSession> &session);
@@ -299,7 +300,7 @@ public:
     void setDistSessionState(const std::shared_ptr<reftools::mbsf::DistSessionState> &state);
     void configureUserServiceAnnouncementBundler();
     void userServiceAnnBundled();
-    std::shared_ptr<reftools::mbsf::DistSessionState> stateOfDistSession(const std::string &key);
+    const reftools::mbsf::DistSessionState &stateOfDistSession(const std::string &key);
     void setCarouselObject(const std::shared_ptr<CarouselObject> &carousel_object);
     std::shared_ptr<CarouselObject> getCarouselObject() const;
     void resetCarouselObject();
