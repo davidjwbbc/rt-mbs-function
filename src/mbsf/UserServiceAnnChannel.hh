@@ -29,6 +29,7 @@ class DistributionSessionInfo;
 class Open5GSSBINFInstance;
 class Open5GSSBIObject;
 class UserDataIngSession;
+class ObjManifest;
 
 class UserServiceAnnChannel {
 public:
@@ -88,6 +89,7 @@ private:
     std::unique_ptr<Open5GSSBIClient> m_client;
     std::shared_ptr<Curl> m_curl;
     std::string m_pushUrl;
+    std::shared_ptr<ObjManifest> m_lastSentCarouselObjectManifest;
     std::condition_variable_any m_announcementChannelChange;
     std::unique_ptr<std::recursive_mutex> m_announcementChannelMutex;
     std::thread m_announcementChannelThread;

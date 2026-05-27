@@ -57,6 +57,8 @@ public:
     ObjManifest &operator=(ObjManifest &&other) = delete;
     ObjManifest &operator=(const ObjManifest &other) = delete;
 
+    bool operator==(const ObjManifest &other) const;
+
     virtual ~ObjManifest();
 
     fiveg_mag_reftools::CJson json(bool as_request) const;

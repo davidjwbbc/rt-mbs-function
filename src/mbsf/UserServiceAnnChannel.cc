@@ -95,6 +95,7 @@ UserServiceAnnChannel::UserServiceAnnChannel()
         ,m_client(nullptr)
         ,m_curl(nullptr)
         ,m_pushUrl()
+        ,m_lastSentCarouselObjectManifest(nullptr)
         ,m_announcementChannelChange()
         ,m_announcementChannelMutex(new std::recursive_mutex)
         ,m_announcementChannelCancel(false)
@@ -376,7 +377,10 @@ void UserServiceAnnChannel::sendCarouselRequest()
 
     if (carousel_objects.size()) {
         carousel_object_manifest.reset(new ObjManifest(carousel_objects));
-        sendCarouselObjectManifest(carousel_object_manifest);
+        if (!m_lastSentCarouselObjectManifest || *carousel_object_manifest != *m_lastSentCarouselObjectManifest) {
+            sendCarouselObjectManifest(carousel_object_manifest);
+            m_lastSentCarouselObjectManifest = carousel_object_manifest;
+        }
     }
 }
 

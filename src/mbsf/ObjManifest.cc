@@ -92,6 +92,12 @@ ObjManifest::~ObjManifest()
 {
 }
 
+bool ObjManifest::operator==(const ObjManifest &other) const
+{
+    std::lock_guard<decltype(m_objectManifestMutex)::element_type> lock(*m_objectManifestMutex);
+    return *m_objectManifest == *other.m_objectManifest;
+}
+
 CJson ObjManifest::json(bool as_request = false) const
 {
     return m_objectManifest->toJSON(as_request);
