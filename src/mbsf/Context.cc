@@ -140,6 +140,7 @@ private:
 static std::list<SockAddr> get_sock_addrs(int family, const std::string &hostname, in_port_t port);
 static void clear_directory(const std::string &directory);
 static NetworkInterface get_net_interface_for(const SockAddr &local_addr);
+static std::string url_escape(const std::string &unescaped);
 
 Context::Context()
     :servers()
@@ -816,8 +817,8 @@ std::string Context::assignNotificationServer(const std::shared_ptr<UserDataIngS
     header.apiVersion("v1");
 
     std::shared_ptr<Open5GSSBIServer> notification_server(getServerForAddr(notif_address, MBS_NOTIFICATION_LISTENER));
-    header.resourceComponent(0, dist_session_id->first.c_str());
-    header.resourceComponent(1, dist_session_id->second.c_str());
+    header.resourceComponent(0, url_escape(dist_session_id->first).c_str());
+    header.resourceComponent(1, url_escape(dist_session_id->second).c_str());
 
     std::string notif_url = notification_server->makeUrl(header);
     if (!notif_url.empty()) {
@@ -1041,6 +1042,20 @@ static NetworkInterface get_net_interface_for(const SockAddr &local_addr)
         freeifaddrs(ifa);
     }
 
+    return result;
+}
+
+static std::string url_escape(const std::string &unescaped)
+{
+    static const char reserved[] = "%!#$&\'()*+,/:;=?@[]";
+    std::string result;
+    for (auto c : unescaped) {
+        if (c < 33 || c > 126 || strchr(reserved, c)) {
+            result += std::format("%{:02x}", c);
+        } else {
+            result += c;
+        }
+    }
     return result;
 }
 
