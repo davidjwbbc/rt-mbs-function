@@ -363,6 +363,8 @@ void Context::deleteUserDataIngSession(const std::string &id)
         auto mbs_user_service = it->second.lock();
         if (mbs_user_service) mbs_user_service->deleteUserDataIngSession(id);
         m_userDataIngSessIndex.erase(it);
+        std::lock_guard<decltype(m_userServiceAnnChannelMutex)::element_type> lock(*m_userServiceAnnChannelMutex);
+        if (m_userServiceAnnChannel) m_userServiceAnnChannel->notify();
     } else {
         throw std::out_of_range("MBSF: User Ingest Session to be deleted is not found");
     }
