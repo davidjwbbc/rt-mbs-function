@@ -146,7 +146,7 @@ bool Nmb2Handler::processEvent(Open5GSEvent &event)
             }
 
             try {
-                ing_sess = UserDataIngSession::find(resource0);
+                ing_sess = UserDataIngSession::locate(resource0);
             } catch (const std::out_of_range &e) {
                 static const char *err = "Unable to retrieve the Distribution Session associated with the Notification from MBSTF.";
                 ogs_error("%s", err);
