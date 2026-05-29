@@ -178,6 +178,7 @@ private:
     void parseObjectRepairParameters(Open5GSYamlIter &iter);
     int parseNotificationConfig(const std::string &pc_key, Open5GSYamlIter &iter);
     void parseUserServiceAnnouncement(const std::string &pc_key, Open5GSYamlIter &iter);
+    void configureMBSAF(const std::string &pc_key, Open5GSYamlIter &iter);
     std::shared_ptr<Open5GSSBIServer> getServerForAddr(const ogs_sockaddr_t *addr, int add_to_server_type);
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(const ogs_sockaddr_t *addr) const;
     const std::shared_ptr<Open5GSSBIServer> &findServerForAddr(const ogs_socknode_t *node) const;

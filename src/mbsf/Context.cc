@@ -299,6 +299,9 @@ bool Context::parseConfig()
                     ogs_warn("Unknown key `mbsf.%s` in configuration", mbsf_key.c_str());
                 }
             }
+        } else if (root_key == "mbsaf") {
+            Open5GSYamlIter mbsaf_iter(root_iter);
+            configureMBSAF("mbsaf", mbsaf_iter);
         }
     }
 
@@ -503,27 +506,38 @@ void Context::parseUserServiceAnnouncement(const std::string &pc_key, Open5GSYam
         } else if (usac_key == "docRoot") {
             has_doc_root = true;
             userServiceAnnouncement.docRoot = std::string(iter.value());
-        } else if (usac_key == "server") {
-            Open5GSYamlIter user_serv_announce_iter(iter);
-            do {
-                if (user_serv_announce_iter.type() == YAML_MAPPING_NODE) {
-                    parseUserServAnnSvrConfiguration(conf_key, user_serv_announce_iter);
-                } else if (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE) {
-                    if (!user_serv_announce_iter.next()) break;
-                    Open5GSYamlIter user_serv_announce_seq_iter(user_serv_announce_iter);
-                    parseUserServAnnSvrConfiguration(conf_key, user_serv_announce_seq_iter);
-                } else if (user_serv_announce_iter.type() == YAML_SCALAR_NODE) {
-                    break;
-                } else {
-                    throw std::out_of_range(std::format("Bad configuration node at {}", conf_key));
-                }
-            } while (user_serv_announce_iter.type() == YAML_SEQUENCE_NODE);
         }
     }
     if (has_doc_root) {
         clear_directory(userServiceAnnouncement.docRoot);
     } else {
         throw std::runtime_error(std::format("MBSF: docRoot missing in mbsf.{} configuration", pc_key));
+    }
+}
+
+void Context::configureMBSAF(const std::string &pc_key, Open5GSYamlIter &iter)
+{
+    while (iter.next()) {
+        std::string mbsaf_key(iter.key());
+        auto conf_key = std::format("{}.{}", pc_key, mbsaf_key);
+        if (mbsaf_key == "server") {
+            Open5GSYamlIter server_iter(iter);
+            do {
+                if (server_iter.type() == YAML_MAPPING_NODE) {
+                    parseUserServAnnSvrConfiguration(conf_key, server_iter);
+                } else if (server_iter.type() == YAML_SEQUENCE_NODE) {
+                    if (!server_iter.next()) break;
+                    Open5GSYamlIter user_serv_announce_seq_iter(server_iter);
+                    parseUserServAnnSvrConfiguration(conf_key, user_serv_announce_seq_iter);
+                } else if (server_iter.type() == YAML_SCALAR_NODE) {
+                    break;
+                } else {
+                    throw std::out_of_range(std::format("Bad configuration node at {}", conf_key));
+                }
+            } while (server_iter.type() == YAML_SEQUENCE_NODE);
+        } else {
+            ogs_warn("Unknown configuration key %s", conf_key.c_str());
+        }
     }
 }
 

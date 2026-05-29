@@ -38,15 +38,19 @@ mbsf:
     ssmDestinationAddress: 232.0.0.1
     mbr: 10 Mbps
     docRoot: @localstatedir@/cache/mbsf/user-service-announcements
-    server:
-      - addr: 127.0.0.67 # Nmb2 (to MBSTF)
-        port: 8888
-      - addr: 127.0.0.67 # MBS-1 (to AP)
-        port: 8889
 
   activeDistributionSessionsSoftLimit: 1000
   activeUserServicesSoftLimit: 50
   actPeriodGoToEstablishedState: 60
+
+mbsaf:
+  server:
+    - addr: 127.0.0.67  # MBS-11 (to MBSTF)
+      port: 8888
+#    - addr: 192.168.0.1 # MBS-1 (to AP)
+#      port: 8888
+#    - addr: 10.0.45.1   # MBS-5 (to UE)
+#      port: 8888
 
 ################################################################################
 # SBI Server
