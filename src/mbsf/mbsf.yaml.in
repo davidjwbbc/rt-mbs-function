@@ -47,9 +47,9 @@ mbsaf:
   server:
     - addr: 127.0.0.67  # MBS-11 (to MBSTF)
       port: 8888
-#    - addr: 192.168.0.1 # MBS-1 (to AP)
+#    - addr: 192.168.0.1 # MBS-1 (to MBS Application Provider)
 #      port: 8888
-#    - addr: 10.0.45.1   # MBS-5 (to UE)
+#    - addr: 10.0.45.1   # MBS-5 (to MBSF Client in UE)
 #      port: 8888
 
 ################################################################################
