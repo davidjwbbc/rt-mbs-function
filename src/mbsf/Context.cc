@@ -734,6 +734,7 @@ void Context::createUserServAnnRequestHandler()
     if (m_userServAnnRequestHandler) return;
     const std::string path = userServiceAnnDocRoot();
     try {
+        if (!std::filesystem::exists(path)) std::filesystem::create_directories(path);
         std::shared_ptr<AnnouncementBundleIndexHandler> announce_index{new AnnouncementBundleIndexHandler};
         std::shared_ptr<DocrootHTTPRequestHandler> docroot_handler{new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index))};
         docroot_handler->addMimeType("sdp", "application/sdp");
@@ -743,6 +744,9 @@ void Context::createUserServAnnRequestHandler()
         m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
     } catch (std::error_condition &ex) {
         ogs_warn("%s", std::format("Failed to create bundle server for path {}: {}", path, ex.message()).c_str());
+        m_userServAnnRequestHandler.reset();
+    } catch (std::filesystem::filesystem_error &ex) {
+        ogs_warn("%s", std::format("Unable to create User Service Announcement bundle path {}: {}", path, ex.what()).c_str());
         m_userServAnnRequestHandler.reset();
     }
 }
