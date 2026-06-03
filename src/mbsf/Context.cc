@@ -733,13 +733,18 @@ void Context::createUserServAnnRequestHandler()
 {
     if (m_userServAnnRequestHandler) return;
     const std::string path = userServiceAnnDocRoot();
-    std::shared_ptr<AnnouncementBundleIndexHandler> announce_index{new AnnouncementBundleIndexHandler};
-    std::shared_ptr<DocrootHTTPRequestHandler> docroot_handler{new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index))};
-    docroot_handler->addMimeType("sdp", "application/sdp");
-    auto handler = std::shared_ptr<PathDelegatorHTTPRequestHandler>(new PathDelegatorHTTPRequestHandler({
-        {"/x-5gmag-service-announcements/v1/user-data-ingest-session/", std::static_pointer_cast<HTTPRequestHandler>(docroot_handler)}
-    }));
-    m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
+    try {
+        std::shared_ptr<AnnouncementBundleIndexHandler> announce_index{new AnnouncementBundleIndexHandler};
+        std::shared_ptr<DocrootHTTPRequestHandler> docroot_handler{new DocrootHTTPRequestHandler(path, std::static_pointer_cast<DocrootHTTPRequestHandler::IndexHandler>(announce_index))};
+        docroot_handler->addMimeType("sdp", "application/sdp");
+        auto handler = std::shared_ptr<PathDelegatorHTTPRequestHandler>(new PathDelegatorHTTPRequestHandler({
+            {"/x-5gmag-service-announcements/v1/user-data-ingest-session/", std::static_pointer_cast<HTTPRequestHandler>(docroot_handler)}
+        }));
+        m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
+    } catch (std::error_condition &ex) {
+        ogs_warn("%s", std::format("Failed to create bundle server for path {}: {}", path, ex.message()).c_str());
+        m_userServAnnRequestHandler.reset();
+    }
 }
 
 std::vector <std::shared_ptr<Open5GSSockAddr> > Context::MBSFUserServicesAddresses()
