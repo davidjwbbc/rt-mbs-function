@@ -306,10 +306,16 @@ bool Context::parseConfig()
     }
 
     if (m_userServiceAnnChannel && m_userServAnnAddresses.empty()) {
-        throw std::out_of_range(std::format("User Service Announcement configured without server addresses"));
+        throw std::out_of_range("User Service Announcement configured without server addresses");
     }
 
-    startUserServAnnServers();
+    if (!m_userServAnnAddresses.empty()) {
+        startUserServAnnServers();
+
+        if (m_userServAnnServers.empty()) {
+            throw std::out_of_range("Failed to start any User Service Announcement bundle servers");
+        }
+    }
 
     return true;
 }
@@ -720,12 +726,14 @@ void Context::parseUserServAnnSvrConfiguration(const std::string &pc_key, Open5G
 
 void Context::startUserServAnnServers() {
     createUserServAnnRequestHandler();
-    for (const auto &sa : m_userServAnnAddresses) {
-        // new address so create new server
-        auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
-        m_userServAnnServers.emplace_back(svr);
-        svr->serverName(std::format("MBSF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
-        ogs_debug("%s", std::format("User Service Announcement server running at {}", svr->listenAddress()).c_str());
+    if (m_userServAnnRequestHandler) {
+        for (const auto &sa : m_userServAnnAddresses) {
+            // new address so create new server
+            auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
+            m_userServAnnServers.emplace_back(svr);
+            svr->serverName(std::format("MBSF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
+            ogs_debug("%s", std::format("User Service Announcement server running at {}", svr->listenAddress()).c_str());
+        }
     }
 }
 
