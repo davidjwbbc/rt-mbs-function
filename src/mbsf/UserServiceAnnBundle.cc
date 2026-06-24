@@ -3,6 +3,7 @@
  ******************************************************************************
  * Copyright: (C)2026 British Broadcasting Corporation
  * Author(s): Dev Audsin <dev.audsin@bbc.co.uk>
+ *            David Waring <david.waring2@bbc.co.uk>
  * License: 5G-MAG Public License v1
  *
  * For full license terms please see the LICENSE file distributed with this
