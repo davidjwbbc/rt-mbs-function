@@ -1054,7 +1054,7 @@ void UserDataIngSession::updateContexts(ogs_pool_id_t stream_id, const std::shar
                             std::shared_ptr<Ssm> ssm_val = ssm.value();
                             std::shared_ptr<IpAddr> dest_ip_addr = ssm_val->getDestIpAddr();
                             std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-                            std::optional<std::shared_ptr<std::string> > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+                            std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                             std::shared_ptr<Ssm> ssm_data(new Ssm(*ssm_val));
                             if (info->getDistrMethod()->getValue() == DistributionMethod::VAL_PACKET &&
                                 info->getPckDistrInfo().value()->getOperatingMode()->getValue() == PktDistributionOperatingMode::VAL_PACKET_FORWARD_ONLY) {
@@ -1136,7 +1136,7 @@ void UserDataIngSession::userServiceAnnChannelDistributionSessionInfo()
                             std::shared_ptr<Ssm> ssm_val = ssm.value();
                             std::shared_ptr<IpAddr> dest_ip_addr = ssm_val->getDestIpAddr();
                             std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-                            std::optional<std::shared_ptr<std::string> > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+                            std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                             std::shared_ptr<Ssm> ssm_data(new Ssm(*ssm_val));
                             static std::random_device rd;
                             static std::uniform_int_distribution<in_port_t> ud(32768, 65535);
@@ -1648,9 +1648,10 @@ bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSessi
         {
             if (get_src_dest_of_same_addr_family(AF_INET, ai_src, ai_dest, &src_addr, &dest_addr))
             {
+                ogs_debug("Making MBSMFMBSSession: src=%s dst=%s", src_ipv4_addr.value().c_str(), dest_ipv4_addr.value().c_str());
                 mb_smf_mbs_session.reset(new MBSMFMBSSession(
                             mb_smf_sc_mbs_session_new_ipv4((const struct in_addr*)src_addr, (const struct in_addr*)dest_addr)));
-           } else {
+            } else {
                ogs_error("Unable to resolve SSM addresses for IPv4 address family");
                if (ai_src) {
                    freeaddrinfo(ai_src);
@@ -1680,7 +1681,7 @@ bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSessi
         struct addrinfo *ai_src = NULL, *ai_dest = NULL;
         void *src_addr = NULL, *dest_addr = NULL;
 
-        if (resolve_src_dest_addr(*src_ipv6_addr.value(), *dest_ipv6_addr.value(), &ai_src, &ai_dest))
+        if (resolve_src_dest_addr(src_ipv6_addr.value(), dest_ipv6_addr.value(), &ai_src, &ai_dest))
         {
             if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
             {
@@ -2825,18 +2826,8 @@ static std::string print_mbs_session_error(const std::shared_ptr<UserDataIngSess
     std::optional<std::string> src_ipv4_addr  = src_ip_addr->getIpv4Addr();
     std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
 
-    std::optional<std::shared_ptr<std::string>> src_ipv6_ptr  = src_ip_addr->getIpv6Addr();
-    std::optional<std::shared_ptr<std::string>> dest_ipv6_ptr = dest_ip_addr->getIpv6Addr();
-
-    std::optional<std::string> src_ipv6_addr;
-    if (src_ipv6_ptr && *src_ipv6_ptr) {
-        src_ipv6_addr = **src_ipv6_ptr;
-    }
-
-    std::optional<std::string> dest_ipv6_addr;
-    if (dest_ipv6_ptr && *dest_ipv6_ptr) {
-        dest_ipv6_addr = **dest_ipv6_ptr;
-    }
+    std::optional<std::string> src_ipv6_addr  = src_ip_addr->getIpv6Addr();
+    std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
 
     const char* tmgi_cstr = context_data->MBSSession->tmgi();
     ogs_debug("TMGI Error: %s", tmgi_cstr);

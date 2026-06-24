@@ -40,7 +40,6 @@
 #include "openapi/model/DistSession.h"
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/IpAddr.h"
-#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/TunnelAddress.h"
 #include "openapi/model/MBSUserDataIngSession.h"
 #include "openapi/model/MBSDistributionSessionInfo.h"
@@ -70,7 +69,6 @@ using reftools::mbsf::IpAddr;
 using reftools::mbsf::ObjDistributionOperatingMode;
 using reftools::mbsf::ObjAcquisitionMethod;
 using reftools::mbsf::UpTrafficFlowInfo;
-using reftools::mbsf::Ipv6Addr;
 
 MBSF_NAMESPACE_START
 

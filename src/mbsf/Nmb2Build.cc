@@ -67,7 +67,6 @@
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/DistSessionSubscription.h"
 #include "openapi/model/IpAddr.h"
-#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/TunnelAddress.h"
 #include "openapi/model/MBSUserDataIngSession.h"
 #include "openapi/model/MBSDistributionSessionInfo.h"
@@ -107,7 +106,6 @@ using reftools::mbsf::ObjDistributionOperatingMode;
 using reftools::mbsf::ObjAcquisitionMethod;
 using reftools::mbsf::ObjDistributionData;
 using reftools::mbsf::UpTrafficFlowInfo;
-using reftools::mbsf::Ipv6Addr;
 using reftools::mbsf::PktDistributionData;
 using reftools::mbsf::PktDistributionOperatingMode;
 using reftools::mbsf::PacketDistrMethInfo;
@@ -323,19 +321,17 @@ std::shared_ptr < TunnelAddress > populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr
 
     for (sa = tunnel_addr; sa; sa = sa->next) {
         if (sa->ogs_sa_family == AF_INET) {
-          OGS_ADDR(sa, buf);
-          std::string ipv4_addr = std::string(buf, strnlen(buf, sizeof(buf)));
-          tun_addr->setIpv4Addr(ipv4_addr);
-          ogs_info("  UDP Tunnel = %s:%u", buf, OGS_PORT(sa));
-          ogs_info("Received IPv4 tunnel address");
-        } else if (sa->ogs_sa_family == AF_INET6) {
-            std::shared_ptr < Ipv6Addr > ipv6_addr;
-
             OGS_ADDR(sa, buf);
-
-            ipv6_addr.reset(new Ipv6Addr(buf, std::string::size_type(strnlen(buf, sizeof(buf)))));
-
-            tun_addr->setIpv6Addr(std::make_optional(ipv6_addr));
+            std::string ipv4_addr = std::string(buf, strnlen(buf, sizeof(buf)));
+            tun_addr->setIpv4Addr(ipv4_addr);
+            ogs_debug("  UDP Tunnel = %s:%u", buf, OGS_PORT(sa));
+            ogs_debug("Received IPv4 tunnel address");
+        } else if (sa->ogs_sa_family == AF_INET6) {
+            OGS_ADDR(sa, buf);
+            std::string ipv6_addr = std::string(buf, strnlen(buf, sizeof(buf)));
+            tun_addr->setIpv6Addr(ipv6_addr);
+            ogs_debug("  UDP Tunnel = [%s]:%u", buf, OGS_PORT(sa));
+            ogs_debug("Received IPv6 tunnel address");
         }
         tun_addr->setPortNumber(OGS_PORT(sa));
     }

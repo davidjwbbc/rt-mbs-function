@@ -30,8 +30,6 @@
 #include "openapi/model/ExternalMbsServiceArea.h"
 #include "openapi/model/GeographicArea.h"
 #include "openapi/model/IpAddr.h"
-#include "openapi/model/Ipv6Addr.h"
-#include "openapi/model/Ipv6Prefix.h"
 #include "openapi/model/MbsServiceArea.h"
 #include "openapi/model/MbsSessionId.h"
 #include "openapi/model/Ncgi.h"
@@ -48,8 +46,6 @@ using reftools::mbsf::CivicAddress;
 using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::GeographicArea;
 using reftools::mbsf::IpAddr;
-using reftools::mbsf::Ipv6Addr;
-using reftools::mbsf::Ipv6Prefix;
 using reftools::mbsf::MbsServiceArea;
 using reftools::mbsf::MbsSessionId;
 using reftools::mbsf::Ncgi;
@@ -63,16 +59,6 @@ namespace std {
 template <>
 struct hash<IpAddr> {
     std::size_t operator()(const IpAddr &ip_addr) const;
-};
-
-template <>
-struct hash<Ipv6Addr> {
-    std::size_t operator()(const Ipv6Addr &ip_addr) const;
-};
-
-template <>
-struct hash<Ipv6Prefix> {
-    std::size_t operator()(const Ipv6Prefix &prefix) const;
 };
 
 template <>
@@ -134,34 +120,18 @@ std::size_t hash<IpAddr>::operator()(const IpAddr &ip_addr) const
 {
     std::size_t result{0x8b6fdf2af3de8565}; // random number to initialise
     auto &ipv4 = ip_addr.getIpv4Addr();
+    std::hash<std::string> str_hash;
     if (ipv4) {
-        std::hash<std::string> str_hash;
         result ^= str_hash(ipv4.value());
     }
     auto &ipv6 = ip_addr.getIpv6Addr();
     if (ipv6) {
-        std::hash<Ipv6Addr> ipv6_hash;
-        result ^= ipv6_hash(*ipv6.value());
+        result ^= str_hash(ipv6.value());
     }
     auto &v6_prefix = ip_addr.getIpv6Prefix();
     if (v6_prefix) {
-        std::hash<Ipv6Prefix> v6_prefix_hash;
-        result ^= v6_prefix_hash(*v6_prefix.value());
+        result ^= str_hash(v6_prefix.value());
     }
-    return result;
-}
-
-std::size_t hash<Ipv6Addr>::operator()(const Ipv6Addr &ip_addr) const
-{
-    std::size_t result{0x872c51cff3801538}; // random number to initialise
-    result ^= std::hash<std::string>{}(ip_addr);
-    return result;
-}
-
-std::size_t hash<Ipv6Prefix>::operator()(const Ipv6Prefix &prefix) const
-{
-    std::size_t result{0x1142047a5d2cfa55}; // random number to initialise
-    result ^= std::hash<std::string>{}(prefix);
     return result;
 }
 
@@ -487,11 +457,11 @@ std::string repr(const IpAddr &ip_addr)
     }
     auto &ipv6 = ip_addr.getIpv6Addr();
     if (ipv6) {
-        result += "\"" + *ipv6.value() + "\"";
+        result += "\"" + ipv6.value() + "\"";
     }
     auto &prefix = ip_addr.getIpv6Prefix();
     if (prefix) {
-        result += "\"" + *prefix.value() + "\"";
+        result += "\"" + prefix.value() + "\"";
     }
 
     result += "]";
@@ -931,14 +901,14 @@ static std::strong_ordering ip_addr_ordering(const IpAddr &a, const IpAddr &b)
 
     if (!a_ipv6 && b_ipv6) return std::strong_ordering::less;
     if (a_ipv6 && !b_ipv6) return std::strong_ordering::greater;
-    if (a_ipv6 && *a_ipv6.value() != *b_ipv6.value()) return *a_ipv6.value() <=> *b_ipv6.value();
+    if (a_ipv6 && a_ipv6.value() != b_ipv6.value()) return a_ipv6.value() <=> b_ipv6.value();
 
     const auto &a_ipv6prefix = a.getIpv6Prefix();
     const auto &b_ipv6prefix = b.getIpv6Prefix();
 
     if (!a_ipv6prefix && b_ipv6prefix) return std::strong_ordering::less;
     if (a_ipv6prefix && !b_ipv6prefix) return std::strong_ordering::greater;
-    if (a_ipv6prefix) return *a_ipv6prefix.value() <=> *b_ipv6prefix.value();
+    if (a_ipv6prefix) return a_ipv6prefix.value() <=> b_ipv6prefix.value();
 
     return std::strong_ordering::equal;
 }

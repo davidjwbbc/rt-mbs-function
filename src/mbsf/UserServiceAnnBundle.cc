@@ -217,8 +217,8 @@ bool UserServiceAnnBundle::writeServiceDescriptionProtocolDoc(const std::shared_
         auto &ssm_source_ipv4 = dist_session_ctx->ssm->getSourceIpAddr()->getIpv4Addr();
         auto &ssm_source_ipv6 = dist_session_ctx->ssm->getSourceIpAddr()->getIpv6Addr();
         if (ssm_source_ipv6) {
-            ssm_source = *ssm_source_ipv6.value();
-            ssm_dest = *dist_session_ctx->ssm->getDestIpAddr()->getIpv6Addr().value();
+            ssm_source = ssm_source_ipv6.value();
+            ssm_dest = dist_session_ctx->ssm->getDestIpAddr()->getIpv6Addr().value();
             ssm_proto = "IN IP6";
             family = AF_INET6;
         } else if (ssm_source_ipv4) {

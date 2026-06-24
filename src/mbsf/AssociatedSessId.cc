@@ -111,13 +111,13 @@ mb_smf_sc_associated_session_id_t *AssociatedSessId::populateAssociatedSessionId
 
 void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id) {
 
-    std::shared_ptr< IpAddr > src_ip_addr = getSourceIpAddr();
-    std::optional<std::string > src_ipv4_addr = src_ip_addr->getIpv4Addr();
-    std::optional<std::shared_ptr< std::string > > src_ipv6_addr = src_ip_addr->getIpv6Addr();
+    std::shared_ptr<IpAddr> src_ip_addr = getSourceIpAddr();
+    std::optional<std::string> src_ipv4_addr = src_ip_addr->getIpv4Addr();
+    std::optional<std::string> src_ipv6_addr = src_ip_addr->getIpv6Addr();
 
-    std::shared_ptr< IpAddr > dest_ip_addr = getDestIpAddr();
-    std::optional<std::string > dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-    std::optional<std::shared_ptr< std::string > > dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+    std::shared_ptr<IpAddr> dest_ip_addr = getDestIpAddr();
+    std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
+    std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
 
     if (!src_ip_addr && !dest_ip_addr) {
         return;
@@ -168,10 +168,10 @@ void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id
        struct addrinfo *ai_src = NULL, *ai_dest = NULL;
        void *src_addr = NULL, *dest_addr = NULL;
 
-       std::shared_ptr< std::string >  src_ipv6 = src_ipv6_addr.value();
-       std::shared_ptr< std::string >  dest_ipv6 = dest_ipv6_addr.value();
+       std::string src_ipv6 = src_ipv6_addr.value();
+       std::string dest_ipv6 = dest_ipv6_addr.value();
 
-       if (resolve_src_dest_addr(*src_ipv6, *dest_ipv6, &ai_src, &ai_dest))
+       if (resolve_src_dest_addr(src_ipv6, dest_ipv6, &ai_src, &ai_dest))
        {
            if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
            {
