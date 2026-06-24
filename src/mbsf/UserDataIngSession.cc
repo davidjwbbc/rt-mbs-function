@@ -1056,11 +1056,6 @@ void UserDataIngSession::updateContexts(ogs_pool_id_t stream_id, const std::shar
                             std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
                             std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                             std::shared_ptr<Ssm> ssm_data(new Ssm(*ssm_val));
-                            if (info->getDistrMethod()->getValue() == DistributionMethod::VAL_PACKET &&
-                                info->getPckDistrInfo().value()->getOperatingMode()->getValue() == PktDistributionOperatingMode::VAL_PACKET_FORWARD_ONLY) {
-                                /* Never pass source address in PACKET_FORWARD_ONLY mode */
-                                ssm_data->setSourceIpAddr(nullptr);
-                            }
                             static std::random_device rd;
                             static std::uniform_int_distribution<in_port_t> ud(32768, 65535);
                             in_port_t port = ud(rd);
@@ -1638,6 +1633,7 @@ bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSessi
 
     std::shared_ptr<MBSMFMBSSession> mb_smf_mbs_session = nullptr;
     if (!src_ipv4_addr && !src_ipv6_addr) {
+        ogs_debug("Making empty MBSMFMBSSession");
         mb_smf_mbs_session.reset(new MBSMFMBSSession(mb_smf_sc_mbs_session_new()));
         mb_smf_mbs_session->setTunnelRequest(true);
     } else if (src_ipv4_addr && dest_ipv4_addr) {
@@ -1685,6 +1681,7 @@ bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSessi
         {
             if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
             {
+                ogs_debug("Making MBSMFMBSSession: src=%s dst=%s", src_ipv6_addr.value().c_str(), dest_ipv6_addr.value().c_str());
                 mb_smf_mbs_session.reset(new MBSMFMBSSession(
                 mb_smf_sc_mbs_session_new_ipv6((const struct in6_addr*)src_addr, (const struct in6_addr*)dest_addr)));
 
@@ -2383,51 +2380,6 @@ std::optional<std::string> UserDataIngSession::getObjectDistributionUrl(const st
     return std::nullopt;
 }
 
-std::optional<std::shared_ptr<PacketDistrMethInfo>> UserDataIngSession::getPktDistributionInfo(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    return info->getPckDistrInfo();
-}
-
-std::shared_ptr< PktDistributionOperatingMode > UserDataIngSession::getPktDistributionOperatingMode(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    std::optional<std::shared_ptr< PacketDistrMethInfo > > pkt_dist_method_info = info->getPckDistrInfo();
-    if (pkt_dist_method_info.has_value()) {
-        std::shared_ptr< PacketDistrMethInfo > dist_method_info = pkt_dist_method_info.value();
-        return dist_method_info->getOperatingMode();
-    }
-    return nullptr;
-}
-
-std::shared_ptr< PktIngestMethod > UserDataIngSession::getPktIngestMethod(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    std::optional<std::shared_ptr< PacketDistrMethInfo > > pkt_dist_method_info = info->getPckDistrInfo();
-    if (pkt_dist_method_info.has_value()) {
-        std::shared_ptr< PacketDistrMethInfo > dist_method_info = pkt_dist_method_info.value();
-        return dist_method_info->getPckIngMethod();
-    }
-    return nullptr;
-}
-
-std::shared_ptr< MbStfIngestAddr > UserDataIngSession::getMbstfIngestAddr(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    std::optional<std::shared_ptr< PacketDistrMethInfo > > pkt_dist_method_info = info->getPckDistrInfo();
-    if (pkt_dist_method_info.has_value()) {
-        std::shared_ptr< PacketDistrMethInfo > dist_method_info = pkt_dist_method_info.value();
-        return dist_method_info->getIngEndpointAddrs();
-    }
-    return nullptr;
-}
-
-std::optional <std::string > UserDataIngSession::getTrafficMarkingInfo(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    return info->getTrafficMarkingInfo();
-}
-
-std::string UserDataIngSession::maxContBitRate(const std::shared_ptr<MBSDistributionSessionInfo> &info)
-{
-    return info->getMaxContBitRate();
-}
-
 void UserDataIngSession::pendingDeleteResponse(ogs_pool_id_t stream_id)
 {
     std::lock_guard<decltype(m_deleteRequestsMutex)::element_type> lock(*m_deleteRequestsMutex);
@@ -2757,6 +2709,17 @@ static void process_mbs_distribution_session_info(const std::shared_ptr<UserData
                     obj_dist_method_info->setObjIngUri(obj_dist_data->getObjIngestBaseUrl());
                 }
             }
+        }
+    }
+    auto &pkt_distribution_method_info = context_data->info->getPckDistrInfo();
+    if (pkt_distribution_method_info) {
+        auto &pkt_ing_endpoint_addr = pkt_distribution_method_info.value()->getIngEndpointAddrs();
+        auto &pkt_distribution_data = dist_session->getPktDistributionData();
+        if (ogs_likely(pkt_distribution_data)) {
+            auto &pkt_mbstf_ingest_addr = pkt_distribution_data.value()->getMbStfIngestAddr();
+            // merge the MBSTF values from mbStfIngestAddr into the existing ingEndpointAddrs (both MbStfIngestAddr types).
+            pkt_ing_endpoint_addr->setMbStfIngressTunAddr(pkt_mbstf_ingest_addr->getMbStfIngressTunAddr());
+            pkt_ing_endpoint_addr->setMbStfListenAddr(pkt_mbstf_ingest_addr->getMbStfListenAddr());
         }
     }
 }

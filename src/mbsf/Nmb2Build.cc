@@ -303,16 +303,27 @@ std::shared_ptr<UpTrafficFlowInfo> populate_mbstf_up_traffic_flow_info(const std
 {
     std::shared_ptr<UpTrafficFlowInfo> flow_info = nullptr;
 
-    flow_info.reset(new UpTrafficFlowInfo() );
-    flow_info->setDestIpAddr(ds_context->ssm->getDestIpAddr());
-    flow_info->setPortNumber(ds_context->ssm_port);
-    flow_info->setSrcIpAddr(ds_context->ssm->getSourceIpAddr());
-    if (ds_context->tsi != 0) flow_info->setTransportSessionId(ds_context->tsi);
+    if (ds_context && ds_context->info) {
+        auto pkt_distr_info = ds_context->info->getPckDistrInfo();
+        if (pkt_distr_info) {
+            auto pkt_oper_mode = pkt_distr_info.value()->getOperatingMode();
+            if (pkt_oper_mode && pkt_oper_mode->getValue() == PktDistributionOperatingMode::VAL_PACKET_FORWARD_ONLY) {
+                // always an empty upTrafficFlowInfo when using packet distribution PACKET_FORWARD_ONLY operating mode
+                return flow_info;
+            }
+        }
+
+        flow_info.reset(new UpTrafficFlowInfo() );
+        flow_info->setDestIpAddr(ds_context->ssm->getDestIpAddr());
+        flow_info->setPortNumber(ds_context->ssm_port);
+        flow_info->setSrcIpAddr(ds_context->ssm->getSourceIpAddr());
+        if (ds_context->tsi != 0) flow_info->setTransportSessionId(ds_context->tsi);
+    }
 
     return flow_info;
 }
 
-std::shared_ptr < TunnelAddress > populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr_t *tunnel_addr)
+std::shared_ptr<TunnelAddress> populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr_t *tunnel_addr)
 {
     ogs_sockaddr_t *sa;
     char buf[OGS_ADDRSTRLEN + 1];
@@ -381,20 +392,28 @@ static std::shared_ptr<DistSessionState> populate_mbstf_dist_session_state(const
     return std::shared_ptr<DistSessionState>(new DistSessionState(current_state));
 }
 
-static std::optional<std::shared_ptr< PktDistributionData > >  populate_mbstf_pkt_distribution_data(std::shared_ptr<MBSDistributionSessionInfo> mbs_dist_session_info)
+static std::optional<std::shared_ptr<PktDistributionData>> populate_mbstf_pkt_distribution_data(std::shared_ptr<MBSDistributionSessionInfo> mbs_dist_session_info)
 {
 
-    std::shared_ptr< PktDistributionData > mbstf_pkt_dist_data = nullptr;
-    std::optional<std::shared_ptr< PacketDistrMethInfo > > pkt_distr_meth_info = UserDataIngSession::getPktDistributionInfo(mbs_dist_session_info);
-    if (!pkt_distr_meth_info.has_value()) return std::nullopt;
-    std::shared_ptr< PktDistributionOperatingMode > operating_mode = UserDataIngSession::getPktDistributionOperatingMode(mbs_dist_session_info);
-    std::shared_ptr< PktIngestMethod > pkt_ingest_method = UserDataIngSession::getPktIngestMethod(mbs_dist_session_info);
-    std::shared_ptr< MbStfIngestAddr > ingest_addr = UserDataIngSession::getMbstfIngestAddr(mbs_dist_session_info);
+    std::optional<std::shared_ptr<PktDistributionData>> mbstf_pkt_dist_data;
+    if (mbs_dist_session_info) {
+        const auto &distr_method = mbs_dist_session_info->getDistrMethod();
+        if (distr_method->getValue() == DistributionMethod::VAL_PACKET) {
+            const auto &pkt_distr_meth_info_opt = mbs_dist_session_info->getPckDistrInfo();
+            if (pkt_distr_meth_info_opt) {
+                const auto &pkt_distr_meth_info = pkt_distr_meth_info_opt.value();
+                const auto &operating_mode = pkt_distr_meth_info->getOperatingMode();
+                const auto &pkt_ingest_method = pkt_distr_meth_info->getPckIngMethod();
+                const auto &ingest_addr = pkt_distr_meth_info->getIngEndpointAddrs();
 
-    mbstf_pkt_dist_data.reset(new PktDistributionData());
-    mbstf_pkt_dist_data->setPktDistributionOperatingMode(operating_mode);
-    mbstf_pkt_dist_data->setPktIngestMethod(pkt_ingest_method);
-    mbstf_pkt_dist_data->setMbStfIngestAddr(ingest_addr);
+                auto pkt_dist_data = std::make_shared<PktDistributionData>();
+                pkt_dist_data->setPktDistributionOperatingMode(operating_mode);
+                pkt_dist_data->setPktIngestMethod(pkt_ingest_method);
+                pkt_dist_data->setMbStfIngestAddr(ingest_addr);
+                mbstf_pkt_dist_data = std::move(pkt_dist_data);
+            }
+        }
+    }
     return mbstf_pkt_dist_data;
 
 }
@@ -510,7 +529,7 @@ static std::shared_ptr< DistSession > build_nmb2_create_dist_session(const std::
 
     dist_session_state = populate_mbstf_dist_session_state(ing_session, context_data_ptr);
 
-    std::string mbr = UserDataIngSession::maxContBitRate(context_data_ptr->info);
+    std::string mbr = context_data_ptr->info->getMaxContBitRate();
 
     std::shared_ptr<DistSessionSubscription> subscription = make_mbstf_dist_session_subscription(ing_session->userDataIngSessionId(), context_data_ptr);
 

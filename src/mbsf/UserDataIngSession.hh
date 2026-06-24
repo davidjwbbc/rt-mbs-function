@@ -265,16 +265,10 @@ public:
 
     static bool processDistSession(const std::shared_ptr<reftools::mbsf::DistSession> &dist_session);
     static std::shared_ptr<reftools::mbsf::ObjDistributionOperatingMode> getOperatingMode(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::shared_ptr<reftools::mbsf::PktDistributionOperatingMode> getPktDistributionOperatingMode(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
     static std::shared_ptr<reftools::mbsf::ObjAcquisitionMethod> getAcquisitionMethod(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
     static std::optional<std::string> getObjectIngestUrl(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
     static std::optional<std::string> getObjectDistributionUrl(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::optional<std::string> getTrafficMarkingInfo(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::optional<std::shared_ptr<reftools::mbsf::PacketDistrMethInfo> > getPktDistributionInfo(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::shared_ptr<reftools::mbsf::PktIngestMethod> getPktIngestMethod(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::shared_ptr<reftools::mbsf::MbStfIngestAddr> getMbstfIngestAddr(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
     static std::list<std::optional<std::string>, fiveg_mag_reftools::OgsAllocator<std::optional<std::string>>> getObjectAcquisitionIds(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
-    static std::string maxContBitRate(const std::shared_ptr<reftools::mbsf::MBSDistributionSessionInfo> &info);
     static bool tmgi(mb_smf_sc_tmgi_t *tmgi, const UserDataIngDistSessId &ids);
     static std::optional<std::string> getObjectIngestBaseUrl(const std::shared_ptr<reftools::mbsf::DistSession> &session);
 
