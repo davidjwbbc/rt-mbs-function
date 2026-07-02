@@ -250,7 +250,7 @@ bool UserService::processEvent(Open5GSEvent &event)
                         }
 
                         if(!checkAndSetUserServiceAnnouncementChannel(mbs_user_service, true)) {
-                            static const char *err = "MBSF Cannot handle User Service Announcement.";
+                            static const char *err = "MBSF cannot handle User Service Announcement channel without local configuration.";
                             ogs_error("%s", err);
                             ogs_assert(true == NfServer::sendError(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST, 1, message,
                                                                     app_meta, api, "Bad MBSF User Service", err));
