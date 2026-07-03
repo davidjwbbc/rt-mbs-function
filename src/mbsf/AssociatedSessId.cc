@@ -45,6 +45,8 @@
 #include "Context.hh"
 #include "MBSMFMBSSession.hh"
 #include "openapi/model/AssociatedSessionId.h"
+#include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
 
 #include "mb-smf-service-consumer.h"
 
@@ -55,6 +57,7 @@ using fiveg_mag_reftools::CJson;
 using fiveg_mag_reftools::ModelException;
 using reftools::mbsf::AssociatedSessionId;
 using reftools::mbsf::IpAddr;
+using reftools::mbsf::Ipv6Addr;
 
 MBSF_NAMESPACE_START
 
@@ -114,11 +117,11 @@ void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id
 
     std::shared_ptr<IpAddr> src_ip_addr = getSourceIpAddr();
     std::optional<std::string> src_ipv4_addr = src_ip_addr->getIpv4Addr();
-    std::optional<std::string> src_ipv6_addr = src_ip_addr->getIpv6Addr();
+    std::optional<std::shared_ptr<Ipv6Addr>> src_ipv6_addr = src_ip_addr->getIpv6Addr();
 
     std::shared_ptr<IpAddr> dest_ip_addr = getDestIpAddr();
     std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-    std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+    std::optional<std::shared_ptr<Ipv6Addr>> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
 
     if (!src_ip_addr && !dest_ip_addr) {
         return;
@@ -169,8 +172,8 @@ void AssociatedSessId::populateSsm(mb_smf_sc_associated_session_id_t *session_id
        struct addrinfo *ai_src = NULL, *ai_dest = NULL;
        void *src_addr = NULL, *dest_addr = NULL;
 
-       std::string src_ipv6 = src_ipv6_addr.value();
-       std::string dest_ipv6 = dest_ipv6_addr.value();
+       std::string src_ipv6 = *src_ipv6_addr.value();
+       std::string dest_ipv6 = *dest_ipv6_addr.value();
 
        if (resolve_src_dest_addr(src_ipv6, dest_ipv6, &ai_src, &ai_dest))
        {

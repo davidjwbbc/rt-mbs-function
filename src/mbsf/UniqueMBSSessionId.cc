@@ -30,6 +30,7 @@
 #include "openapi/model/ExternalMbsServiceArea.h"
 #include "openapi/model/GeographicArea.h"
 #include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/MbsServiceArea.h"
 #include "openapi/model/MbsSessionId.h"
 #include "openapi/model/Ncgi.h"
@@ -46,6 +47,7 @@ using reftools::mbsf::CivicAddress;
 using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::GeographicArea;
 using reftools::mbsf::IpAddr;
+using reftools::mbsf::Ipv6Addr;
 using reftools::mbsf::MbsServiceArea;
 using reftools::mbsf::MbsSessionId;
 using reftools::mbsf::Ncgi;
@@ -126,11 +128,11 @@ std::size_t hash<IpAddr>::operator()(const IpAddr &ip_addr) const
     }
     auto &ipv6 = ip_addr.getIpv6Addr();
     if (ipv6) {
-        result ^= str_hash(ipv6.value());
+        result ^= str_hash(*ipv6.value());
     }
     auto &v6_prefix = ip_addr.getIpv6Prefix();
     if (v6_prefix) {
-        result ^= str_hash(v6_prefix.value());
+        result ^= str_hash(*v6_prefix.value());
     }
     return result;
 }
@@ -457,11 +459,11 @@ std::string repr(const IpAddr &ip_addr)
     }
     auto &ipv6 = ip_addr.getIpv6Addr();
     if (ipv6) {
-        result += "\"" + ipv6.value() + "\"";
+        result += "\"" + *ipv6.value() + "\"";
     }
     auto &prefix = ip_addr.getIpv6Prefix();
     if (prefix) {
-        result += "\"" + prefix.value() + "\"";
+        result += "\"" + *prefix.value() + "\"";
     }
 
     result += "]";
@@ -901,14 +903,14 @@ static std::strong_ordering ip_addr_ordering(const IpAddr &a, const IpAddr &b)
 
     if (!a_ipv6 && b_ipv6) return std::strong_ordering::less;
     if (a_ipv6 && !b_ipv6) return std::strong_ordering::greater;
-    if (a_ipv6 && a_ipv6.value() != b_ipv6.value()) return a_ipv6.value() <=> b_ipv6.value();
+    if (a_ipv6 && *a_ipv6.value() != *b_ipv6.value()) return *a_ipv6.value() <=> *b_ipv6.value();
 
     const auto &a_ipv6prefix = a.getIpv6Prefix();
     const auto &b_ipv6prefix = b.getIpv6Prefix();
 
     if (!a_ipv6prefix && b_ipv6prefix) return std::strong_ordering::less;
     if (a_ipv6prefix && !b_ipv6prefix) return std::strong_ordering::greater;
-    if (a_ipv6prefix) return a_ipv6prefix.value() <=> b_ipv6prefix.value();
+    if (a_ipv6prefix) return *a_ipv6prefix.value() <=> *b_ipv6prefix.value();
 
     return std::strong_ordering::equal;
 }

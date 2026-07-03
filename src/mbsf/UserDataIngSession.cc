@@ -75,6 +75,7 @@
 #include "Open5GSNetworkFunction.hh"
 #include "ServiceScheduleDesc.hh"
 #include <SockAddr.hh>
+#include "TimerFunc.hh"
 #include "utilities.hh"
 #include "UserDataIngStatSubsc.hh"
 #include "UserService.hh"
@@ -82,38 +83,34 @@
 #include "UserServiceAnnChannel.hh"
 #include "UniqueMBSSessionId.hh"
 #include "UserDataIngSessionNotificationEvent.hh"
+#include "openapi/model/AssociatedSessionId.h"
+#include "openapi/model/DistributionMethod.h"
 #include "openapi/model/DistSession.h"
-#include "openapi/model/MBSUserDataIngSession.h"
-#include "openapi/model/Tmgi.h"
-#include "openapi/model/TunnelAddress.h"
-#include "openapi/model/MBSDistributionSessionInfo.h"
-#include "openapi/model/Ssm.h"
-#include "openapi/model/ObjDistributionData.h"
-#include "openapi/model/PlmnId.h"
-#include "openapi/model/MbsSessionId.h"
-#include "openapi/model/MbsServiceInfo.h"
-#include "openapi/model/MbsServiceType.h"
-#include "openapi/model/IpAddr.h"
-#include "openapi/model/ProblemCause.hh"
-
-#include "openapi/model/MbsServiceInfo.h"
-#include "openapi/model/FECConfig.h"
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/ExternalMbsServiceArea.h"
+#include "openapi/model/FECConfig.h"
+#include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
+#include "openapi/model/MBSDistributionSessionInfo.h"
 #include "openapi/model/MbsServiceArea.h"
-#include "openapi/model/PacketDistrMethInfo.h"
-#include "openapi/model/DistributionMethod.h"
-#include "openapi/model/NrRedCapUeInfo.h"
+#include "openapi/model/MbsServiceInfo.h"
+#include "openapi/model/MbsServiceType.h"
 #include "openapi/model/MbsSessionId.h"
-#include "openapi/model/AssociatedSessionId.h"
+#include "openapi/model/MBSUserDataIngSession.h"
+#include "openapi/model/NrRedCapUeInfo.h"
+#include "openapi/model/ObjDistributionData.h"
 #include "openapi/model/ObjectDistrMethInfo.h"
+#include "openapi/model/PacketDistrMethInfo.h"
+#include "openapi/model/PlmnId.h"
+#include "openapi/model/ProblemCause.hh"
 #include "openapi/model/ServiceScheduleDescription.h"
+#include "openapi/model/Ssm.h"
 #include "openapi/model/TimeWindow.h"
-
+#include "openapi/model/Tmgi.h"
+#include "openapi/model/TunnelAddress.h"
 
 #include "openapi/api/IndividualMBSUserDataIngestSessionDocumentApi-info.h"
 #include "mb-smf-service-consumer.h"
-#include "TimerFunc.hh"
 
 // Header include for this class
 #include "UserDataIngSession.hh"
@@ -127,6 +124,7 @@ using reftools::mbsf::DistSession;
 using reftools::mbsf::DistSessionState;
 using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::IpAddr;
+using reftools::mbsf::Ipv6Addr;
 using reftools::mbsf::MBSDistributionSessionInfo;
 using reftools::mbsf::MbsServiceArea;
 using reftools::mbsf::MbsServiceInfo;
@@ -1055,7 +1053,7 @@ void UserDataIngSession::updateContexts(ogs_pool_id_t stream_id, const std::shar
                             std::shared_ptr<Ssm> ssm_val = ssm.value();
                             std::shared_ptr<IpAddr> dest_ip_addr = ssm_val->getDestIpAddr();
                             std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-                            std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+                            std::optional<std::shared_ptr<Ipv6Addr>> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                             std::shared_ptr<Ssm> ssm_data(new Ssm(*ssm_val));
                             static std::random_device rd;
                             static std::uniform_int_distribution<in_port_t> ud(32768, 65535);
@@ -1129,10 +1127,10 @@ void UserDataIngSession::userServiceAnnChannelDistributionSessionInfo()
                         std::shared_ptr<MbsSessionId > mbs_sess_id = *mbs_session_id;
                         std::optional<std::shared_ptr<Ssm> > ssm = mbs_sess_id->getSsm();
                         if (ssm.has_value()) {
-                            std::shared_ptr<Ssm> ssm_val = ssm.value();
-                            std::shared_ptr<IpAddr> dest_ip_addr = ssm_val->getDestIpAddr();
-                            std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
-                            std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+                            const std::shared_ptr<Ssm> &ssm_val = ssm.value();
+                            const std::shared_ptr<IpAddr> &dest_ip_addr = ssm_val->getDestIpAddr();
+                            const std::optional<std::string> &dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
+                            const std::optional<std::shared_ptr<Ipv6Addr>> &dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
                             std::shared_ptr<Ssm> ssm_data(new Ssm(*ssm_val));
                             static std::random_device rd;
                             static std::uniform_int_distribution<in_port_t> ud(32768, 65535);
@@ -1678,11 +1676,11 @@ bool UserDataIngSession::createMbsSession(const std::shared_ptr<UserDataIngSessi
         struct addrinfo *ai_src = NULL, *ai_dest = NULL;
         void *src_addr = NULL, *dest_addr = NULL;
 
-        if (resolve_src_dest_addr(src_ipv6_addr.value(), dest_ipv6_addr.value(), &ai_src, &ai_dest))
+        if (resolve_src_dest_addr(*src_ipv6_addr.value(), *dest_ipv6_addr.value(), &ai_src, &ai_dest))
         {
             if (get_src_dest_of_same_addr_family(AF_INET6, ai_src, ai_dest, &src_addr, &dest_addr))
             {
-                ogs_debug("Making MBSMFMBSSession: src=%s dst=%s", src_ipv6_addr.value().c_str(), dest_ipv6_addr.value().c_str());
+                ogs_debug("Making MBSMFMBSSession: src=%s dst=%s", src_ipv6_addr.value()->c_str(), dest_ipv6_addr.value()->c_str());
                 mb_smf_mbs_session.reset(new MBSMFMBSSession(
                 mb_smf_sc_mbs_session_new_ipv6((const struct in6_addr*)src_addr, (const struct in6_addr*)dest_addr)));
 
@@ -2790,8 +2788,10 @@ static std::string print_mbs_session_error(const std::shared_ptr<UserDataIngSess
     std::optional<std::string> src_ipv4_addr  = src_ip_addr->getIpv4Addr();
     std::optional<std::string> dest_ipv4_addr = dest_ip_addr->getIpv4Addr();
 
-    std::optional<std::string> src_ipv6_addr  = src_ip_addr->getIpv6Addr();
-    std::optional<std::string> dest_ipv6_addr = dest_ip_addr->getIpv6Addr();
+    const std::optional<std::shared_ptr<Ipv6Addr>> &src_ipv6_addr_obj  = src_ip_addr->getIpv6Addr();
+    const std::optional<std::shared_ptr<Ipv6Addr>> &dest_ipv6_addr_obj = dest_ip_addr->getIpv6Addr();
+    std::optional<std::string> src_ipv6_addr  = src_ipv6_addr_obj?std::make_optional<std::string>(*src_ipv6_addr_obj.value()):std::nullopt;
+    std::optional<std::string> dest_ipv6_addr = dest_ipv6_addr_obj?std::make_optional<std::string>(*dest_ipv6_addr_obj.value()):std::nullopt;
 
     const char* tmgi_cstr = context_data->MBSSession->tmgi();
     ogs_debug("TMGI Error: %s", tmgi_cstr);

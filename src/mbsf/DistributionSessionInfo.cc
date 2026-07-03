@@ -58,6 +58,7 @@
 #include "openapi/model/Event.h"
 #include "openapi/model/FECConfig.h"
 #include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/MBSDistributionSessionInfo.h"
 #include "openapi/model/MbsServiceArea.h"
 #include "openapi/model/MbsServiceInfo.h"
@@ -84,6 +85,7 @@ using reftools::mbsf::Event;
 using reftools::mbsf::ExternalMbsServiceArea;
 using reftools::mbsf::FECConfig;
 using reftools::mbsf::IpAddr;
+using reftools::mbsf::Ipv6Addr;
 using reftools::mbsf::ObjectDistrMethInfo;
 using reftools::mbsf::ObjDistributionOperatingMode;
 using reftools::mbsf::MBSDistributionSessionInfo;
@@ -696,8 +698,8 @@ const std::shared_ptr<reftools::mbsf::Ssm> DistributionSessionInfo::populateSsm(
             src_ip_addr->setIpv4Addr(ssm_source_address);
             dst_ip_addr->setIpv4Addr(ssm_destination_address);
         } else if (src_info->ai_family == AF_INET6) {
-            src_ip_addr->setIpv6Addr(ssm_source_address);
-            dst_ip_addr->setIpv6Addr(ssm_destination_address);
+            src_ip_addr->setIpv6Addr(std::make_shared<Ipv6Addr>(ssm_source_address));
+            dst_ip_addr->setIpv6Addr(std::make_shared<Ipv6Addr>(ssm_destination_address));
         }
     }
 

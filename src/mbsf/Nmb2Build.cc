@@ -68,6 +68,7 @@
 #include "openapi/model/DistSessionState.h"
 #include "openapi/model/DistSessionSubscription.h"
 #include "openapi/model/IpAddr.h"
+#include "openapi/model/Ipv6Addr.h"
 #include "openapi/model/TunnelAddress.h"
 #include "openapi/model/MBSUserDataIngSession.h"
 #include "openapi/model/MBSDistributionSessionInfo.h"
@@ -96,22 +97,23 @@ using reftools::mbsf::DistSession;
 using reftools::mbsf::DistSessionEventType;
 using reftools::mbsf::DistSessionState;
 using reftools::mbsf::DistSessionSubscription;
-using reftools::mbsf::MBSUserDataIngSession;
-using reftools::mbsf::MBSDistributionSessionInfo;
-using reftools::mbsf::TunnelAddress;
-using reftools::mbsf::Ssm;
-using reftools::mbsf::MbsSessionId;
-using reftools::mbsf::MbsServiceType;
 using reftools::mbsf::IpAddr;
-using reftools::mbsf::ObjDistributionOperatingMode;
+using reftools::mbsf::Ipv6Addr;
+using reftools::mbsf::MBSDistributionSessionInfo;
+using reftools::mbsf::MbsServiceType;
+using reftools::mbsf::MbsSessionId;
+using reftools::mbsf::MbStfIngestAddr;
+using reftools::mbsf::MBSUserDataIngSession;
 using reftools::mbsf::ObjAcquisitionMethod;
 using reftools::mbsf::ObjDistributionData;
-using reftools::mbsf::UpTrafficFlowInfo;
+using reftools::mbsf::ObjDistributionOperatingMode;
+using reftools::mbsf::PacketDistrMethInfo;
 using reftools::mbsf::PktDistributionData;
 using reftools::mbsf::PktDistributionOperatingMode;
-using reftools::mbsf::PacketDistrMethInfo;
 using reftools::mbsf::PktIngestMethod;
-using reftools::mbsf::MbStfIngestAddr;
+using reftools::mbsf::Ssm;
+using reftools::mbsf::TunnelAddress;
+using reftools::mbsf::UpTrafficFlowInfo;
 
 MBSF_NAMESPACE_START
 
@@ -341,7 +343,7 @@ std::shared_ptr<TunnelAddress> populate_mbstf_mb_upf_tunnel_addr(ogs_sockaddr_t 
         } else if (sa->ogs_sa_family == AF_INET6) {
             OGS_ADDR(sa, buf);
             std::string ipv6_addr = std::string(buf, strnlen(buf, sizeof(buf)));
-            tun_addr->setIpv6Addr(ipv6_addr);
+            tun_addr->setIpv6Addr(std::make_shared<Ipv6Addr>(ipv6_addr));
             ogs_debug("  UDP Tunnel = [%s]:%u", buf, OGS_PORT(sa));
             ogs_debug("Received IPv6 tunnel address");
         }
