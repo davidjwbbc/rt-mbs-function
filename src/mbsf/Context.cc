@@ -313,7 +313,7 @@ bool Context::parseConfig()
         startUserServAnnServers();
 
         if (m_userServAnnServers.empty()) {
-            throw std::out_of_range("Failed to start any User Service Announcement bundle servers");
+            throw std::out_of_range("Failed to start any collocated MBS-AF servers");
         }
     }
 
@@ -731,8 +731,8 @@ void Context::startUserServAnnServers() {
             // new address so create new server
             auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
             m_userServAnnServers.emplace_back(svr);
-            svr->serverName(std::format("MBSF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
-            ogs_debug("%s", std::format("User Service Announcement server running at {}", svr->listenAddress()).c_str());
+            svr->serverName(std::format("MBSAF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
+            ogs_debug("%s", std::format("Collocated MBS-AF running at {}", svr->listenAddress()).c_str());
         }
     }
 }
@@ -751,10 +751,10 @@ void Context::createUserServAnnRequestHandler()
         }));
         m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
     } catch (std::error_condition &ex) {
-        ogs_warn("%s", std::format("Failed to create bundle server for path {}: {}", path, ex.message()).c_str());
+        ogs_warn("%s", std::format("Failed to initialise collocated MBS-AF for path {}: {}", path, ex.message()).c_str());
         m_userServAnnRequestHandler.reset();
     } catch (std::filesystem::filesystem_error &ex) {
-        ogs_warn("%s", std::format("Unable to create User Service Announcement bundle path {}: {}", path, ex.what()).c_str());
+        ogs_warn("%s", std::format("Unable to create User Service Announcement bundles path {}: {}", path, ex.what()).c_str());
         m_userServAnnRequestHandler.reset();
     }
 }
@@ -880,7 +880,7 @@ std::shared_ptr<Open5GSSBIServer> Context::newSbiServer(const ogs_sockaddr_t *ad
             getsockname(svr->node.sock->fd, (struct sockaddr*)&svr->node.sock->local_addr, &len);
             ogs_freeaddrinfo(svr->node.addr);
             ogs_copyaddrinfo(&svr->node.addr, &svr->node.sock->local_addr);
-            ogs_info("Ephemeral notification server(%s) [%s://%s]:%u", svr->interface ? svr->interface : "",
+            ogs_info("Ephemeral server(%s) [%s://%s]:%u", svr->interface ? svr->interface : "",
                      svr->ssl_ctx ? "https" : "http", OGS_ADDR(svr->node.addr, buf), OGS_PORT(svr->node.addr));
         }
     }
