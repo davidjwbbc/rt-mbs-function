@@ -313,7 +313,7 @@ bool Context::parseConfig()
         startUserServAnnServers();
 
         if (m_userServAnnServers.empty()) {
-            throw std::out_of_range("Failed to start any co-located MBS-AF servers");
+            throw std::out_of_range("Failed to start any co-located MBS AF servers");
         }
     }
 
@@ -732,7 +732,7 @@ void Context::startUserServAnnServers() {
             auto *svr = new HTTPServer(sa, m_userServAnnRequestHandler);
             m_userServAnnServers.emplace_back(svr);
             svr->serverName(std::format("MBSAF ({}; {})", HTTPServer::httpLibraryVersion(), HTTPServer::httpLibraryVersionComment()));
-            ogs_debug("%s", std::format("Co-located MBS-AF running at {}", svr->listenAddress()).c_str());
+            ogs_debug("%s", std::format("Co-located MBS AF running at {}", svr->listenAddress()).c_str());
         }
     }
 }
@@ -751,7 +751,7 @@ void Context::createUserServAnnRequestHandler()
         }));
         m_userServAnnRequestHandler = std::static_pointer_cast<HTTPRequestHandler>(handler);
     } catch (std::error_condition &ex) {
-        ogs_warn("%s", std::format("Failed to initialise co-located MBS-AF for path {}: {}", path, ex.message()).c_str());
+        ogs_warn("%s", std::format("Failed to initialise co-located MBS AF for path {}: {}", path, ex.message()).c_str());
         m_userServAnnRequestHandler.reset();
     } catch (std::filesystem::filesystem_error &ex) {
         ogs_warn("%s", std::format("Unable to create User Service Announcement bundles path {}: {}", path, ex.what()).c_str());
